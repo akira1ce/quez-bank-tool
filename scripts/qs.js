@@ -2,10 +2,7 @@
 // @name         quez-bank-tool
 // @namespace    http://tampermonkey.net/
 // @version      2.0.0
-// @description  在页面上添加题库搜索面板，支持正则匹配搜索题库内容
-// @description  ～ 键切换显隐，点击空白处隐藏，顶部白条支持拖拽移动面板，支持设置面板宽度、高度、背景色、主题色
-// @description  支持搜索框输入关键词或正则表达式搜索题库内容，支持搜索选项，支持搜索答案
-// @description  支持题目导航，支持上一题、下一题、跳转到指定题目。通过 G 按钮获取题目，782 行 selector。
+// @description  question-bank-tool
 // @match        *://*/*
 // @grant        none
 // @run-at       document-idle
