@@ -1,0 +1,21 @@
+{
+  "name": "excel-to-txt-converter",
+  "version": "1.0.0",
+  "description": "Excel 题库转 TXT 知识库工具",
+  "main": "excel_to_txt.js",
+  "scripts": {
+    "convert": "node excel_to_txt.js"
+  },
+  "keywords": [
+    "excel",
+    "txt",
+    "converter",
+    "question-bank"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
+
