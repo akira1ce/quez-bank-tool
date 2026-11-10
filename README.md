@@ -1,316 +1,184 @@
 # 题库工具集 (Question Bank Tool)
 
-一个用于处理和管理题库的工具集，支持 Excel 题库转换、文件合并、去重检查等功能，并提供浏览器脚本用于在线搜索题库内容。
+用于转换、合并、去重题库，并把收集到的答案 JSON 聚合成答案库；附带「华讯助手」Tampermonkey 脚本，可在内部考试页面自动匹配合适的选项。
 
-## 功能特性
+## 目录结构
 
-- 📊 **Excel 转 TXT**：将 Excel 格式的题库转换为标准 TXT 知识库格式
-- 🔗 **文件合并**：合并多个 TXT 题库文件到一个汇总文件
-- 🔍 **重复检查**：检查题库中的重复题目
-- ✂️ **去重处理**：自动去除完全重复的题目
-- 🌐 **浏览器脚本**：Tampermonkey 脚本，支持在线搜索题库内容
-
-## 安装
-
-### 前置要求
-
-- Node.js >= 12.0.0
-- npm 或 yarn
-
-### 安装依赖
-
-```bash
-npm install
+```
+quez-bank-tool/
+├── core/                              # Node 题库处理脚本
+│   ├── excel_to_txt_universal.js      # Excel 转 TXT
+│   ├── merge_txt.js                   # 合并 TXT 题库
+│   ├── check_duplicates.js            # 检查重复题目
+│   ├── remove_duplicates.js           # 去除重复题目
+│   └── merge_answers_json.js          # 聚合答案 JSON 并去重
+├── eccom-helper/                      # 华讯助手源码
+│   ├── src/                           # ES 模块 + panel.css
+│   ├── prompts/                       # 表格转答案 JSON 提示词
+│   └── build.mjs                      # esbuild 打包脚本
+├── scripts/
+│   ├── eccom-helper.js                # 华讯助手（构建产物）
+│   └── quez-bank-tool.js              # 旧版搜索脚本（legacy）
+├── test/
+│   ├── mock-exam.html                 # 本地模拟考试页
+│   └── mock-answers.json              # 模拟页对应的答案库
+├── resouces/                          # 收集到的答案 JSON（聚合输入）
+├── package.json
+└── README.md
 ```
 
-## 使用方法
+## 环境
 
-### 1. Excel 转 TXT (`excel_to_txt_universal.js`)
+- Node.js >= 18
+- 安装依赖：`npm install`
 
-将 Excel 题库文件转换为 TXT 格式的知识库文件。
+## 题库处理脚本
 
-**支持的 Excel 格式：**
-
-- 格式1: `题型-问题-正确答案-选项A-选项B-选项C-选项D-选项E-选项F`
-- 格式2: `题型-问题-答案-选项A-选项B-选项C-选项D`
-- 格式3: `题目-答案-A-B-C-D`
-
-**使用方法：**
+### 1. Excel 转 TXT (`core/excel_to_txt_universal.js`)
 
 ```bash
-node scripts/excel_to_txt_universal.js <excel文件路径> [输出文件路径]
+node core/excel_to_txt_universal.js <excel文件路径> [输出文件路径]
 ```
 
-**示例：**
+不传输出路径时，默认生成 Excel 同目录同名 `.txt`。
 
-```bash
-# 使用默认输出路径（同目录同名文件）
-node scripts/excel_to_txt_universal.js 题库.xlsx
+支持的表头格式：
 
-# 指定输出路径
-node scripts/excel_to_txt_universal.js 题库.xlsx 输出.txt
-```
+- `题型-问题-正确答案-选项A-选项B-选项C-选项D-选项E-选项F`
+- `题型-问题-答案-选项A-选项B-选项C-选项D`
+- `题目-答案-A-B-C-D`
 
-**输出格式：**
+输出格式：
 
 ```
 # 单选题
 题目：这是题目内容
 A. 选项A内容
 B. 选项B内容
-C. 选项C内容
-D. 选项D内容
 答案：A
-
----
-
-# 判断题
-题目：这是判断题内容
-答案：正确
-
 ---
 ```
 
-### 2. 合并 TXT 文件 (`merge_txt.js`)
-
-将目录中的所有 TXT 题库文件合并到一个汇总文件中。
-
-**使用方法：**
+### 2. 合并 TXT (`core/merge_txt.js`)
 
 ```bash
-node scripts/merge_txt.js [输出文件路径] [源目录路径]
+node core/merge_txt.js [输出文件路径] [源目录路径]
+node core/merge_txt.js -o 题库汇总.txt -d ./题库目录
 ```
 
-**参数说明：**
+默认合并当前目录所有 TXT，输出到源目录下的 `题库汇总.txt`。
 
-- `-o, --output`: 指定输出文件路径
-- `-d, --dir`: 指定源目录路径（默认为当前目录）
+### 3. 检查重复 (`core/check_duplicates.js`)
 
-**示例：**
+按题目内容查重（不比较答案）：
 
 ```bash
-# 合并当前目录下的所有 TXT 文件
-node scripts/merge_txt.js
-
-# 指定输出文件
-node scripts/merge_txt.js -o 题库汇总.txt
-
-# 指定源目录和输出文件
-node scripts/merge_txt.js -o 汇总.txt -d ./题库目录
+node core/check_duplicates.js 题库汇总.txt
 ```
 
-**输出格式：**
+### 4. 去除重复 (`core/remove_duplicates.js`)
 
-```
-============================================================
-# 文件名1
-============================================================
-
-[文件1内容]
-
-============================================================
-# 文件名2
-============================================================
-
-[文件2内容]
-```
-
-### 3. 检查重复题目 (`check_duplicates.js`)
-
-检查题库文件中是否存在重复的题目（基于题目内容，不考虑答案）。
-
-**使用方法：**
+题目和答案都完全相同的条目会被删除：
 
 ```bash
-node scripts/check_duplicates.js <题库文件路径>
+node core/remove_duplicates.js 题库汇总.txt [输出文件路径]
 ```
 
-**示例：**
+默认输出 `原文件名_去重.txt`。
+
+### 5. 聚合答案 JSON (`core/merge_answers_json.js`)
+
+递归读取目录下收集到的答案 JSON，合并成一个答案库：
 
 ```bash
-node scripts/check_duplicates.js 题库汇总.txt
+node core/merge_answers_json.js [源目录] [输出文件]
+# 默认：resouces/ -> resouces/merged-answers.json
+npm run merge:answers
 ```
 
-**输出示例：**
+规则：
 
-```
-📖 正在解析文件: 题库汇总.txt
+- 每道题的 `answer` 数组先排序
+- 题目和答案完全一致视为重复，保留首次出现的条目
+- 其余字段（包括 `qno`）原样保留
 
-📊 共解析到 100 道题目
+## 华讯助手
 
-⚠️  发现 5 组重复题目：
+在内部考试页面（`internal.eccom.com.cn`）自动匹配题库并选中答案，同时支持从考试结果页导出答对题的 JSON。
 
-================================================================================
+### 构建
 
-【重复组 1】出现 3 次
-题型: 单选题
-题目: 这是重复的题目内容...
-出现位置:
-  1. 第 10 题 - 答案: A
-  2. 第 25 题 - 答案: B
-  3. 第 50 题 - 答案: A
-```
-
-### 4. 去除重复题目 (`remove_duplicates.js`)
-
-去除题库文件中题目和答案都完全相同的重复项。
-
-**使用方法：**
-
-```bash
-node scripts/remove_duplicates.js <题库文件路径> [输出文件路径]
-```
-
-**示例：**
-
-```bash
-# 使用默认输出路径（原文件名_去重.txt）
-node scripts/remove_duplicates.js 题库汇总.txt
-
-# 指定输出路径
-node scripts/remove_duplicates.js 题库汇总.txt 去重后的题库.txt
-```
-
-**输出示例：**
-
-```
-📖 正在解析文件: 题库汇总.txt
-
-📊 共解析到 100 道题目
-
-⚠️  删除重复题目 #25 (与 #10 重复)
-⚠️  删除重复题目 #50 (与 #10 重复)
-
-================================================================================
-✅ 去重完成！
-📄 输入文件: 题库汇总.txt
-📄 输出文件: 题库汇总_去重.txt
-📊 原始题目数: 100
-📊 去重后题目数: 98
-📊 删除重复题目数: 2
-📊 保留率: 98.00%
-```
-
-### 5. 浏览器搜索脚本 (`qs.js`)
-
-Tampermonkey 用户脚本，用于在网页上搜索题库内容。
-
-**安装步骤：**
-
-1. 安装 [Tampermonkey](https://www.tampermonkey.net/) 浏览器扩展
-2. 打开 Tampermonkey 管理面板
-3. 创建新脚本，将 `scripts/qs.js` 的内容复制进去
-4. 在脚本中找到 `QUESTION_BANK_CONTENT` 变量，将题库汇总 TXT 文件的内容粘贴进去
-5. 保存脚本
-
-**使用方法：**
-
-1. 在任意网页上按反引号键 `` ` `` 或点击右上角的 `+` 按钮打开搜索面板
-2. 在搜索框中输入关键词或正则表达式
-3. 勾选"正则匹配"选项可使用正则表达式搜索
-4. 点击"搜索"按钮或按 Enter 键执行搜索
-
-**功能特性：**
-
-- 🔍 支持关键词搜索和正则表达式搜索
-- 📋 题目导航功能（获取页面题目并快速切换）
-- 🎨 可自定义面板样式（宽度、高度、背景色、主题色）
-- 🖱️ 支持拖拽移动面板位置
-- ⌨️ 快捷键支持（反引号键切换显隐）
-
-**题目导航功能：**
-
-- 点击 `G` 按钮获取当前页面的题目列表
-- 使用 `-` 和 `+` 按钮切换上一题/下一题
-- 在输入框中输入题号并回车可跳转到指定题目
-
-### 6. 华讯助手脚本 (`scripts/eccom-helper.js`)
-
-Tampermonkey 用户脚本，用于在内部考试页面自动匹配题库答案。源码在 `eccom-helper/src/`（ES 模块 + `panel.css`），用 esbuild 打包成单个可安装文件：
+源码在 `eccom-helper/src/`（ES 模块 + CSS），由 esbuild 打包成单个可安装文件：
 
 ```bash
 npm run build:eccom
 ```
 
-产物为 `scripts/eccom-helper.js`，将整个文件内容复制到 Tampermonkey 即可。
+产物为 `scripts/eccom-helper.js`。安装时把整个文件内容复制到 Tampermonkey 新建脚本中即可。
 
-表格转答案 JSON 的提示词在 `eccom-helper/prompts/table-to-answers-json.md`，不参与打包。
+### 使用
 
-### 7. 聚合答案 JSON (`core/merge_answers_json.js`)
+按反引号 `` ` `` 显示/隐藏面板，面板分两个标签页：
 
-递归读取目录下所有收集到的答案 JSON，按题干去重后合并成一个答案库。
+- **答题**：上一题 / 答题 / 下一题；下方显示当前题目的匹配结果；「答案 JSON」可展开粘贴答案库并保存
+- **工具**：全选当前页面单选项；获取本页答对题 JSON 后复制或下载
 
-```bash
-node core/merge_answers_json.js [源目录] [输出文件]
-# 默认：resouces/ -> resouces/merged-answers.json
-# 或
-npm run merge:answers
+匹配规则：
+
+- 题干和选项文本都先做规范化（NFKC、去空白和标点、转小写）
+- 先找全等，找不到再用 include（双向包含）兜底
+- `answer` 必须是选项的完整文本，不支持 `A/B/C/D` 这类字母
+- `qno` 可选，不参与匹配
+
+### 答案 JSON 格式
+
+```json
+{
+  "questions": [
+    {
+      "qno": 1,
+      "question": "题干原文",
+      "answer": ["正确选项的完整文本"]
+    }
+  ]
+}
 ```
 
-去重规则：
+多选时 `answer` 放多个完整选项文本。
 
-- 每道题的 `answer` 数组先排序
-- 题目和答案完全一致才视为重复，保留首次出现的条目
+### 表格转答案 JSON 提示词
 
-## 工作流程示例
+在 `eccom-helper/prompts/table-to-answers-json.md`，用于把考试结果表格整理成上面的 JSON，不参与打包。
 
-### 完整的工作流程
+## 本地测试模拟考试页
 
-```bash
-# 1. 将多个 Excel 文件转换为 TXT
-node scripts/excel_to_txt_universal.js 题库1.xlsx
-node scripts/excel_to_txt_universal.js 题库2.xlsx
-node scripts/excel_to_txt_universal.js 题库3.xlsx
+`test/mock-exam.html` 复刻了考试页的关键 DOM（`#ecmc_body_content`、`#frmAnswer`、`#QNo` 等），内置 20 道来自当前题库的题目（12 单选、4 多选、4 判断）。
 
-# 2. 合并所有 TXT 文件
-node scripts/merge_txt.js -o 题库汇总.txt
+测试步骤：
 
-# 3. 检查重复题目
-node scripts/check_duplicates.js 题库汇总.txt
+1. 在 Tampermonkey 里给「华讯助手」临时加一行 `// @match file:///*`，并开启扩展的「允许访问文件网址」
+2. 打开 `test/mock-exam.html`
+3. 按反引号展开面板，把 `test/mock-answers.json` 粘贴到「答案 JSON」并保存
+4. 点击「答题」「下一题」，检查选项是否被正确选中
 
-# 4. 去除重复题目
-node scripts/remove_duplicates.js 题库汇总.txt 题库汇总_去重.txt
+测试完成后删掉临时的 `@match file:///*`。
 
-# 5. 将去重后的文件内容复制到 qs.js 脚本的 QUESTION_BANK_CONTENT 变量中
-```
+## 旧版脚本 `scripts/quez-bank-tool.js`
 
-## 项目结构
+这是最早的做法（旧 README 里叫 `qs.js`），保留作历史参考，不再更新：
 
-```
-quez-bank-tool/
-├── core/                              # 题库处理脚本
-│   ├── excel_to_txt_universal.js      # Excel 转 TXT 转换脚本
-│   ├── merge_txt.js                   # TXT 文件合并脚本
-│   ├── check_duplicates.js            # 重复题目检查脚本
-│   ├── remove_duplicates.js           # 去重脚本
-│   └── merge_answers_json.js          # 答案 JSON 聚合去重脚本
-├── eccom-helper/                      # 华讯助手源码
-│   ├── src/                           # ES 模块 + panel.css
-│   ├── prompts/                       # 表格转答案 JSON 提示词
-│   └── build.mjs                      # esbuild 打包脚本
-├── scripts/
-│   ├── quez-bank-tool.js              # Tampermonkey 搜索脚本
-│   └── eccom-helper.js                # 华讯助手（构建产物）
-├── package.json                       # 项目配置文件
-└── README.md                          # 项目说明文档
-```
+- 单文件用户脚本，`@match *://*/*`，无需构建
+- 把合并 TXT 生成的汇总内容粘贴进 `QUESTION_BANK_CONTENT` 变量
+- 提供关键词/正则搜索、获取当前页面题目、上一题/下一题导航
+- 面板可拖拽，宽高和配色保存在 `localStorage`
 
-## 依赖项
+它的题库输入是 TXT 文本，需要手动粘贴，也没有自动答题能力。现在推荐使用 `core/merge_answers_json.js` 聚合答案 JSON，再配合 `scripts/eccom-helper.js` 使用。
 
-- `xlsx`: ^0.18.5 - 用于读取和解析 Excel 文件
+## 依赖
 
-## 注意事项
-
-1. **Excel 文件格式**：确保 Excel 文件的第一行为表头，包含必要的列名（如"题目"、"答案"等）
-2. **TXT 文件格式**：所有脚本都基于标准的 TXT 题库格式，使用 `---` 作为题目分隔符
-3. **编码格式**：所有文件使用 UTF-8 编码
-4. **浏览器脚本**：`qs.js` 需要在 Tampermonkey 环境中运行，并需要手动填入题库内容
+- `xlsx`: ^0.18.5，读取 Excel
+- `esbuild`: ^0.28.2，打包用户脚本（仅开发用）
 
 ## 许可证
 
-MIT License
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
+MIT
