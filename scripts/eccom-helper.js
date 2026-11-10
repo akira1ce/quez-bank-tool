@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         华讯助手
 // @namespace    http://tampermonkey.net/
-// @version      7.3
+// @version      7.5
 // @description  统一答案数组，全等优先 include 兜底匹配；紧凑工具型 UI；JSON 输入区可折叠；支持从考试结果页导入答对题目
 // @match        *://internal.eccom.com.cn/*
 // @grant        GM_setValue
@@ -10,7 +10,7 @@
 // ==/UserScript==
 (() => {
   // eccom-helper/src/panel.css
-  var panel_default = '#auto-solver-box {\n  position: fixed; top: 12px; right: 12px; z-index: 999999;\n  width: 320px;\n  background: #ffffff; color: #1f2937;\n  border: 1px solid #e5e7eb; border-radius: 10px;\n  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);\n  padding: 10px;\n  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  font-size: 13px; line-height: 1.45;\n}\n#auto-solver-box, #auto-solver-box * { box-sizing: border-box; }\n#auto-solver-box button {\n  all: unset;\n  box-sizing: border-box;\n  display: inline-flex; align-items: center; justify-content: center;\n  min-height: 30px; padding: 0 10px;\n  border: 1px solid #d1d5db; border-radius: 7px;\n  background: #ffffff; color: #1f2937;\n  font: 500 12.5px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  cursor: pointer; text-align: center;\n  transition: background .15s, border-color .15s, color .15s;\n}\n#auto-solver-box button:hover { background: #f3f4f6; }\n#auto-solver-box button:active { background: #e5e7eb; }\n#auto-solver-box button.as-primary {\n  background: #2563eb; border-color: #2563eb; color: #ffffff;\n}\n#auto-solver-box button.as-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }\n\n.as-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }\n.as-seg { display: inline-flex; padding: 2px; background: #f3f4f6; border-radius: 8px; gap: 2px; }\n.as-seg-btn { min-height: 26px !important; padding: 0 14px !important; border: 0 !important; background: transparent !important; color: #6b7280 !important; border-radius: 6px !important; font-weight: 500 !important; }\n.as-seg-btn:hover { color: #1f2937 !important; }\n.as-seg-btn.is-active { background: #ffffff !important; color: #111827 !important; box-shadow: 0 1px 2px rgba(0,0,0,.08); }\n.as-hint { font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9ca3af; padding: 3px 6px; border: 1px solid #e5e7eb; border-radius: 5px; }\n\n.as-card {\n  border: 1px solid #e5e7eb; border-radius: 8px;\n  padding: 10px 12px; margin-bottom: 10px;\n  background: #fafbfc;\n}\n.as-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }\n.as-card-tag { font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: .04em; text-transform: uppercase; }\n.as-card-state { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }\n.as-state-hit { color: #047857; background: #ecfdf5; }\n.as-state-miss { color: #b45309; background: #fffbeb; }\n.as-card-question { font-size: 13px; color: #111827; margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }\n.as-card-answers { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }\n.as-card-answers li {\n  font-size: 12.5px; color: #065f46; background: #ecfdf5;\n  border: 1px solid #d1fae5; border-radius: 6px;\n  padding: 5px 8px; white-space: pre-wrap; word-break: break-word;\n}\n.as-card-meta { font-size: 11px; color: #9ca3af; margin-top: 6px; }\n.as-card-reason { font-size: 12.5px; color: #b45309; white-space: pre-wrap; word-break: break-word; }\n.as-card-sub { font-size: 11.5px; color: #6b7280; margin-top: 6px; }\n\n.as-actions { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 6px; margin-bottom: 10px; }\n.as-actions button { width: 100%; }\n\n.as-disclosure {\n  all: unset;\n  box-sizing: border-box;\n  display: flex; align-items: center; gap: 6px; width: 100%;\n  padding: 7px 10px; margin-bottom: 8px;\n  border: 1px dashed #d1d5db; border-radius: 7px;\n  color: #4b5563; font-size: 12.5px; cursor: pointer;\n  background: #ffffff;\n}\n.as-disclosure:hover { background: #f9fafb; }\n.as-caret { display: inline-block; width: 12px; color: #9ca3af; transition: transform .15s; }\n.as-disclosure.is-open .as-caret { transform: rotate(90deg); }\n.as-count { margin-left: auto; font-size: 11px; color: #6b7280; }\n\n.as-json-wrap { margin-bottom: 10px; }\n.as-json-wrap textarea {\n  display: block; width: 100%; height: 120px; min-height: 120px;\n  padding: 8px; border: 1px solid #d1d5db; border-radius: 7px;\n  background: #ffffff; color: #111827;\n  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;\n  resize: vertical; outline: none;\n  margin-top: 8px;\n}\n.as-json-wrap textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }\n.as-json-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }\n.as-json-actions button { width: 100%; }\n\n.as-status {\n  font-size: 12px; color: #6b7280;\n  min-height: 16px; max-height: 140px; overflow-y: auto;\n  white-space: pre-wrap; word-break: break-word;\n  padding: 6px 8px; background: #f9fafb; border-radius: 6px;\n  border: 1px solid #f3f4f6;\n  margin-top: 8px;\n}\n\n.as-tools-note { font-size: 11.5px; color: #9ca3af; margin-top: 6px; }\n\n#as-page-tools button { width: 100%; }\n\n@media (max-width: 640px) {\n  #auto-solver-box { width: calc(100vw - 24px); right: 12px; left: 12px; }\n}\n';
+  var panel_default = '#auto-solver-box {\n  position: fixed; top: 12px; right: 12px; z-index: 999999;\n  width: 320px;\n  background: #ffffff; color: #1f2937;\n  border: 1px solid #e5e7eb; border-radius: 10px;\n  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);\n  padding: 10px;\n  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  font-size: 13px; line-height: 1.45;\n}\n#auto-solver-box, #auto-solver-box * { box-sizing: border-box; }\n#auto-solver-box button {\n  all: unset;\n  box-sizing: border-box;\n  display: inline-flex; align-items: center; justify-content: center;\n  min-height: 30px; padding: 0 10px;\n  border: 1px solid #d1d5db; border-radius: 7px;\n  background: #ffffff; color: #1f2937;\n  font: 500 12.5px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  cursor: pointer; text-align: center;\n  transition: background .15s, border-color .15s, color .15s;\n}\n#auto-solver-box button:hover { background: #f3f4f6; }\n#auto-solver-box button:active { background: #e5e7eb; }\n#auto-solver-box button.as-primary {\n  background: #2563eb; border-color: #2563eb; color: #ffffff;\n}\n#auto-solver-box button.as-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }\n\n.as-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }\n.as-seg { display: inline-flex; padding: 2px; background: #f3f4f6; border-radius: 8px; gap: 2px; }\n.as-seg-btn { min-height: 26px !important; padding: 0 14px !important; border: 0 !important; background: transparent !important; color: #6b7280 !important; border-radius: 6px !important; font-weight: 500 !important; }\n.as-seg-btn:hover { color: #1f2937 !important; }\n.as-seg-btn.is-active { background: #ffffff !important; color: #111827 !important; box-shadow: 0 1px 2px rgba(0,0,0,.08); }\n.as-hint { font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9ca3af; padding: 3px 6px; border: 1px solid #e5e7eb; border-radius: 5px; }\n\n.as-card {\n  border: 1px solid #e5e7eb; border-radius: 8px;\n  padding: 10px 12px; margin-bottom: 10px;\n  background: #fafbfc;\n}\n.as-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }\n.as-card-tag { font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: .04em; text-transform: uppercase; }\n.as-card-state { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }\n.as-state-hit { color: #047857; background: #ecfdf5; }\n.as-state-miss { color: #b45309; background: #fffbeb; }\n.as-card-question { font-size: 13px; color: #111827; margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }\n.as-card-answers { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }\n.as-card-answers li {\n  font-size: 12.5px; color: #065f46; background: #ecfdf5;\n  border: 1px solid #d1fae5; border-radius: 6px;\n  padding: 5px 8px; white-space: pre-wrap; word-break: break-word;\n}\n.as-card-meta { font-size: 11px; color: #9ca3af; margin-top: 6px; }\n.as-card-reason { font-size: 12.5px; color: #b45309; white-space: pre-wrap; word-break: break-word; }\n.as-card-sub { font-size: 11.5px; color: #6b7280; margin-top: 6px; }\n\n.as-actions { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 6px; margin-bottom: 10px; }\n.as-actions button { width: 100%; }\n\n.as-disclosure {\n  all: unset;\n  box-sizing: border-box;\n  display: flex; align-items: center; gap: 6px; width: 100%;\n  padding: 7px 10px; margin-bottom: 8px;\n  border: 1px dashed #d1d5db; border-radius: 7px;\n  color: #4b5563; font-size: 12.5px; cursor: pointer;\n  background: #ffffff;\n}\n.as-disclosure:hover { background: #f9fafb; }\n.as-caret { display: inline-block; width: 12px; color: #9ca3af; transition: transform .15s; }\n.as-disclosure.is-open .as-caret { transform: rotate(90deg); }\n.as-count { margin-left: auto; font-size: 11px; color: #6b7280; }\n\n.as-json-wrap { margin-bottom: 10px; }\n.as-json-wrap textarea {\n  display: block; width: 100%; height: 120px; min-height: 120px;\n  padding: 8px; border: 1px solid #d1d5db; border-radius: 7px;\n  background: #ffffff; color: #111827;\n  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;\n  resize: vertical; outline: none;\n  margin-top: 8px;\n}\n.as-json-wrap textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }\n.as-json-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }\n.as-json-actions button { width: 100%; }\n\n.as-status {\n  font-size: 12px; color: #6b7280;\n  min-height: 16px; max-height: 140px; overflow-y: auto;\n  white-space: pre-wrap; word-break: break-word;\n  padding: 6px 8px; background: #f9fafb; border-radius: 6px;\n  border: 1px solid #f3f4f6;\n  margin-top: 8px;\n}\n\n.as-tools-note { font-size: 11.5px; color: #9ca3af; margin-top: 6px; }\n\n#as-page-tools button { width: 100%; }\n\n@media (max-width: 640px) {\n  #auto-solver-box { width: calc(100vw - 24px); right: 12px; left: 12px; }\n}\n';
 
   // eccom-helper/src/shared.js
   var CFG = {
@@ -550,6 +550,31 @@
       }
     }
   }
+  function downloadJson(filename, text) {
+    const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+  function buildExamJson() {
+    const result = collectExamResult();
+    if (!result.ok) return { ok: false, reason: result.reason };
+    return {
+      ok: true,
+      json: JSON.stringify(result.data, null, 2),
+      kept: result.kept,
+      skippedWrong: result.skippedWrong,
+      skippedInvalid: result.skippedInvalid
+    };
+  }
+  function examSummary({ kept, skippedWrong, skippedInvalid }) {
+    return `${kept} 道答对题（错题 ${skippedWrong}，异常 ${skippedInvalid}）`;
+  }
   function renderBankCard(entry) {
     const card = document.getElementById("as-bank-card");
     if (!card) return;
@@ -615,7 +640,6 @@
           placeholder='粘贴答案 JSON：answer 必须是数组'></textarea>
         <div class="as-json-actions">
           <button id="as-save" type="button">保存</button>
-          <button id="as-load" type="button">读取</button>
           <button id="as-clear" type="button">清空</button>
         </div>
       </div>
@@ -623,12 +647,15 @@
 
     <div id="as-page-tools" style="display:none">
       <button id="as-select-radios" type="button">全选当前页面单选项</button>
-      <button id="as-import-exam" type="button" style="margin-top:8px">
+      <button id="as-copy-exam" type="button" style="margin-top:8px">
         复制本页答对题 JSON
+      </button>
+      <button id="as-download-exam" type="button" style="margin-top:8px">
+        下载本页答对题 JSON
       </button>
       <div class="as-tools-note">
         逐个点击每个 td 中的单选框。<br>
-        从考试结果页收集“得分=满分”的题目，生成答案 JSON 并复制到剪贴板。
+        从考试结果页收集“得分=满分”的题目，生成答案 JSON 并复制或下载。
       </div>
     </div>
 
@@ -676,22 +703,31 @@
       const count = clickRadiosInCells();
       setStatus(`已点击 ${count} 个单选项`);
     };
-    $("#as-import-exam").onclick = async () => {
-      const result = collectExamResult();
-      if (!result.ok) {
-        setStatus(`生成失败：${result.reason}`);
+    $("#as-copy-exam").onclick = async () => {
+      const built = buildExamJson();
+      if (!built.ok) {
+        setStatus(`生成失败：${built.reason}`);
         return;
       }
-      const json = JSON.stringify(result.data, null, 2);
-      const copied = await copyText(json);
+      const copied = await copyText(built.json);
       if (!copied) {
-        console.warn("[Solver] 复制失败，JSON 如下:", json);
+        console.warn("[Solver] 复制失败，JSON 如下:", built.json);
         setStatus("复制失败：请检查剪贴板权限，JSON 已输出到控制台");
         return;
       }
-      setStatus(
-        `已复制 ${result.kept} 道答对题（错题 ${result.skippedWrong}，异常 ${result.skippedInvalid}）`
-      );
+      setStatus(`已复制 ${examSummary(built)}`);
+    };
+    $("#as-download-exam").onclick = () => {
+      const built = buildExamJson();
+      if (!built.ok) {
+        setStatus(`生成失败：${built.reason}`);
+        return;
+      }
+      const now = /* @__PURE__ */ new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+      downloadJson(`eccom-answers-${timestamp}.json`, built.json);
+      setStatus(`已下载 ${examSummary(built)}`);
     };
     document.addEventListener("keydown", (event) => {
       if (event.code === "Backquote") {
@@ -714,17 +750,6 @@
       } catch (error) {
         setStatus(`保存失败：${error.message}`);
       }
-    };
-    $("#as-load").onclick = () => {
-      const saved2 = getStoredAnswers();
-      if (!saved2.raw) {
-        setStatus("存储中没有答案");
-        return;
-      }
-      $("#as-json").value = saved2.raw;
-      setStatus(saved2.invalid ? "JSON 格式异常" : `已读取 ${saved2.count} 道题`);
-      updateJsonCount();
-      refreshBankCard();
     };
     $("#as-clear").onclick = () => {
       $("#as-json").value = "";

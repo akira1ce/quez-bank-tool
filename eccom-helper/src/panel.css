@@ -82,7 +82,7 @@
   margin-top: 8px;
 }
 .as-json-wrap textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
-.as-json-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+.as-json-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }
 .as-json-actions button { width: 100%; }
 
 .as-status {

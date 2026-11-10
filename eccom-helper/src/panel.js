@@ -43,6 +43,35 @@ async function copyText(text) {
   }
 }
 
+function downloadJson(filename, text) {
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function buildExamJson() {
+  const result = collectExamResult();
+  if (!result.ok) return { ok: false, reason: result.reason };
+
+  return {
+    ok: true,
+    json: JSON.stringify(result.data, null, 2),
+    kept: result.kept,
+    skippedWrong: result.skippedWrong,
+    skippedInvalid: result.skippedInvalid,
+  };
+}
+
+function examSummary({ kept, skippedWrong, skippedInvalid }) {
+  return `${kept} 道答对题（错题 ${skippedWrong}，异常 ${skippedInvalid}）`;
+}
+
 function renderBankCard(entry) {
   const card = document.getElementById("as-bank-card");
   if (!card) return;
@@ -124,7 +153,6 @@ export function init() {
           placeholder='粘贴答案 JSON：answer 必须是数组'></textarea>
         <div class="as-json-actions">
           <button id="as-save" type="button">保存</button>
-          <button id="as-load" type="button">读取</button>
           <button id="as-clear" type="button">清空</button>
         </div>
       </div>
@@ -132,12 +160,15 @@ export function init() {
 
     <div id="as-page-tools" style="display:none">
       <button id="as-select-radios" type="button">全选当前页面单选项</button>
-      <button id="as-import-exam" type="button" style="margin-top:8px">
+      <button id="as-copy-exam" type="button" style="margin-top:8px">
         复制本页答对题 JSON
+      </button>
+      <button id="as-download-exam" type="button" style="margin-top:8px">
+        下载本页答对题 JSON
       </button>
       <div class="as-tools-note">
         逐个点击每个 td 中的单选框。<br>
-        从考试结果页收集“得分=满分”的题目，生成答案 JSON 并复制到剪贴板。
+        从考试结果页收集“得分=满分”的题目，生成答案 JSON 并复制或下载。
       </div>
     </div>
 
@@ -201,26 +232,39 @@ export function init() {
     setStatus(`已点击 ${count} 个单选项`);
   };
 
-  $("#as-import-exam").onclick = async () => {
-    const result = collectExamResult();
+  $("#as-copy-exam").onclick = async () => {
+    const built = buildExamJson();
 
-    if (!result.ok) {
-      setStatus(`生成失败：${result.reason}`);
+    if (!built.ok) {
+      setStatus(`生成失败：${built.reason}`);
       return;
     }
 
-    const json = JSON.stringify(result.data, null, 2);
-    const copied = await copyText(json);
+    const copied = await copyText(built.json);
 
     if (!copied) {
-      console.warn("[Solver] 复制失败，JSON 如下:", json);
+      console.warn("[Solver] 复制失败，JSON 如下:", built.json);
       setStatus("复制失败：请检查剪贴板权限，JSON 已输出到控制台");
       return;
     }
 
-    setStatus(
-      `已复制 ${result.kept} 道答对题（错题 ${result.skippedWrong}，异常 ${result.skippedInvalid}）`,
-    );
+    setStatus(`已复制 ${examSummary(built)}`);
+  };
+
+  $("#as-download-exam").onclick = () => {
+    const built = buildExamJson();
+
+    if (!built.ok) {
+      setStatus(`生成失败：${built.reason}`);
+      return;
+    }
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+
+    downloadJson(`eccom-answers-${timestamp}.json`, built.json);
+    setStatus(`已下载 ${examSummary(built)}`);
   };
 
   document.addEventListener("keydown", (event) => {
@@ -247,18 +291,6 @@ export function init() {
     } catch (error) {
       setStatus(`保存失败：${error.message}`);
     }
-  };
-
-  $("#as-load").onclick = () => {
-    const saved = getStoredAnswers();
-    if (!saved.raw) {
-      setStatus("存储中没有答案");
-      return;
-    }
-    $("#as-json").value = saved.raw;
-    setStatus(saved.invalid ? "JSON 格式异常" : `已读取 ${saved.count} 道题`);
-    updateJsonCount();
-    refreshBankCard();
   };
 
   $("#as-clear").onclick = () => {
