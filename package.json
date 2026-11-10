@@ -5,7 +5,8 @@
   "main": "excel_to_txt.js",
   "scripts": {
     "convert": "node excel_to_txt.js",
-    "build:eccom": "node eccom-helper/build.mjs"
+    "build:eccom": "node eccom-helper/build.mjs",
+    "merge:answers": "node core/merge_answers_json.js"
   },
   "keywords": [
     "excel",

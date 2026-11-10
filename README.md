@@ -236,6 +236,22 @@ npm run build:eccom
 
 表格转答案 JSON 的提示词在 `eccom-helper/prompts/table-to-answers-json.md`，不参与打包。
 
+### 7. 聚合答案 JSON (`core/merge_answers_json.js`)
+
+递归读取目录下所有收集到的答案 JSON，按题干去重后合并成一个答案库。
+
+```bash
+node core/merge_answers_json.js [源目录] [输出文件]
+# 默认：resouces/ -> resouces/merged-answers.json
+# 或
+npm run merge:answers
+```
+
+去重规则：
+
+- 每道题的 `answer` 数组先排序
+- 题目和答案完全一致才视为重复，保留首次出现的条目
+
 ## 工作流程示例
 
 ### 完整的工作流程
@@ -266,7 +282,8 @@ quez-bank-tool/
 │   ├── excel_to_txt_universal.js      # Excel 转 TXT 转换脚本
 │   ├── merge_txt.js                   # TXT 文件合并脚本
 │   ├── check_duplicates.js            # 重复题目检查脚本
-│   └── remove_duplicates.js           # 去重脚本
+│   ├── remove_duplicates.js           # 去重脚本
+│   └── merge_answers_json.js          # 答案 JSON 聚合去重脚本
 ├── eccom-helper/                      # 华讯助手源码
 │   ├── src/                           # ES 模块 + panel.css
 │   ├── prompts/                       # 表格转答案 JSON 提示词

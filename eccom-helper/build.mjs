@@ -4,8 +4,8 @@ import { build } from "esbuild";
 const header = `// ==UserScript==
 // @name         华讯助手
 // @namespace    http://tampermonkey.net/
-// @version      7.6
-// @description  统一答案数组，全等优先 include 兜底匹配；紧凑工具型 UI；JSON 输入区可折叠；支持从考试结果页导入答对题目
+// @version      7.7
+// @description  题干/答案全等优先，include 兜底；紧凑工具型 UI；JSON 输入区可折叠；支持从考试结果页导入答对题目
 // @match        *://internal.eccom.com.cn/*
 // @grant        GM_setValue
 // @grant        GM_getValue

@@ -77,18 +77,12 @@ function renderBankCard(entry) {
   if (!card) return;
 
   if (!entry.ok) {
-    const closest = entry.closest;
     card.innerHTML = `
       <div class="as-card-head">
         <span class="as-card-tag">题库</span>
         <span class="as-card-state as-state-miss">未匹配</span>
       </div>
       <div class="as-card-reason">${escapeHtml(entry.reason)}</div>
-      ${
-        closest
-          ? `<div class="as-card-sub">最接近：${escapeHtml(closest.title)}<br>相似度：${closest.score.toFixed(3)}</div>`
-          : ""
-      }
     `;
     return;
   }
@@ -106,7 +100,7 @@ function renderBankCard(entry) {
     </div>
     <div class="as-card-question">${escapeHtml(entry.question)}</div>
     <div class="as-card-answers">${answers}</div>
-    <div class="as-card-meta">${escapeHtml(entry.matchedBy)} · ${entry.score.toFixed(2)}</div>
+    <div class="as-card-meta">${escapeHtml(entry.matchedBy)}</div>
   `;
 }
 
@@ -289,10 +283,7 @@ export function init() {
   $("#as-save").onclick = () => {
     try {
       const result = saveAnswers($("#as-json").value);
-      const letterTip = result.letterOnly
-        ? `，${result.letterOnly} 道疑似字母`
-        : "";
-      setStatus(`已保存 ${result.count} 道题${letterTip}`);
+      setStatus(`已保存 ${result.count} 道题`);
       updateJsonCount();
       refreshBankCard();
       setJsonOpen(false);

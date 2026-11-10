@@ -1,0 +1,78 @@
+const fs = require("fs");
+const path = require("path");
+
+const DEFAULT_DIR = "resouces";
+const DEFAULT_OUTPUT = path.join(DEFAULT_DIR, "merged-answers.json");
+
+function collectJsonFiles(dir) {
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return collectJsonFiles(full);
+      return entry.isFile() && entry.name.endsWith(".json") ? [full] : [];
+    })
+    .sort((a, b) => a.localeCompare(b, "zh-CN", { numeric: true }));
+}
+
+function mergeAnswers(sourceDir, outputPath) {
+  const outputAbs = path.resolve(outputPath);
+  const files = collectJsonFiles(sourceDir).filter(
+    (file) => path.resolve(file) !== outputAbs,
+  );
+
+  const seen = new Set();
+  const questions = [];
+  let total = 0;
+
+  for (const file of files) {
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+
+    for (const question of data.questions) {
+      total++;
+      const entry = { ...question, answer: [...question.answer].sort() };
+      const key = JSON.stringify([entry.question, entry.answer]);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      questions.push(entry);
+    }
+  }
+
+  fs.mkdirSync(path.dirname(outputAbs), { recursive: true });
+  fs.writeFileSync(
+    outputAbs,
+    `${JSON.stringify({ questions }, null, 2)}\n`,
+    "utf8",
+  );
+
+  return {
+    outputPath: outputAbs,
+    files: files.length,
+    total,
+    unique: questions.length,
+  };
+}
+
+function main() {
+  const [sourceArg, outputArg] = process.argv.slice(2);
+  const sourceDir = sourceArg || DEFAULT_DIR;
+  const outputPath = outputArg || DEFAULT_OUTPUT;
+
+  if (!fs.existsSync(sourceDir) || !fs.statSync(sourceDir).isDirectory()) {
+    console.error(`目录不存在: ${sourceDir}`);
+    process.exit(1);
+  }
+
+  const summary = mergeAnswers(sourceDir, outputPath);
+
+  console.log(
+    `已读取 ${summary.files} 个文件，${summary.total} 道题，去重后 ${summary.unique} 道（移除 ${summary.total - summary.unique} 道）`,
+  );
+  console.log(`输出: ${summary.outputPath}`);
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = { mergeAnswers };
