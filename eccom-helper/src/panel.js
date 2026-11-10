@@ -127,14 +127,14 @@ export function init() {
       <span class="as-hint">\`</span>
     </div>
 
-    <div id="as-bank-card" class="as-card"></div>
-
     <div id="as-body">
       <div class="as-actions">
         <button id="as-prev" type="button">上一题</button>
         <button id="as-solve" class="as-primary" type="button">答题</button>
         <button id="as-next" type="button">下一题</button>
       </div>
+
+      <div id="as-bank-card" class="as-card"></div>
 
       <button id="as-toggle-json" class="as-disclosure" type="button">
         <span class="as-caret">▸</span><span class="as-label">答案 JSON</span>
@@ -209,7 +209,6 @@ export function init() {
     const answerMode = mode === "answer";
     $("#as-body").style.display = answerMode ? "block" : "none";
     $("#as-page-tools").style.display = answerMode ? "none" : "block";
-    $("#as-bank-card").style.display = answerMode ? "block" : "none";
     $("#as-mode-answer").classList.toggle("is-active", answerMode);
     $("#as-mode-page").classList.toggle("is-active", !answerMode);
   };

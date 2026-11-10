@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>模拟考试 - 华讯助手测试</title>
+<style>
+  body { margin: 0; padding: 24px; font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #1f2937; background: #f9fafb; }
+  .test-note { max-width: 760px; margin: 0 auto 16px; padding: 12px 16px; border: 1px solid #fde68a; border-radius: 8px; background: #fffbeb; font-size: 13px; }
+  .test-note code { padding: 1px 5px; border-radius: 4px; background: #fef3c7; font-family: ui-monospace, Menlo, monospace; }
+  .exam { max-width: 760px; margin: 0 auto; padding: 20px 24px; border: 1px solid #e5e7eb; border-radius: 10px; background: #ffffff; }
+  h1 { margin: 0 0 16px; font-size: 20px; }
+  #ecmc_body_content { margin-bottom: 14px; }
+  #ecmc_body_content b { font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 8px 6px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  td:first-child { width: 36px; }
+  .nav { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+  .nav button { min-height: 32px; padding: 0 14px; border: 1px solid #d1d5db; border-radius: 7px; background: #ffffff; cursor: pointer; }
+  .nav button:disabled { opacity: .45; cursor: not-allowed; }
+  .nav select { min-height: 32px; border: 1px solid #d1d5db; border-radius: 7px; background: #ffffff; }
+  .counter { color: #6b7280; }
+</style>
+</head>
+<body>
+  <div class="test-note">
+    <b>测试说明</b>
+    <p style="margin:6px 0 0">
+      本地文件测试前，在 Tampermonkey 里给「华讯助手」临时加一行
+      <code>// @match file:///*</code>，并开启扩展的「允许访问文件网址」。
+      打开页面后按 <code>`</code> 展开面板，把 <code>mock-answers.json</code>
+      的内容粘贴到「答案 JSON」并保存，再点「答题」。
+    </p>
+  </div>
+
+  <div class="exam">
+    <h1>模拟考试（20 题）</h1>
+
+    <div id="ecmc_body_content"><div><b id="question-title"></b></div></div>
+    <input id="QNo" type="hidden" value="1">
+
+    <form id="frmAnswer">
+      <table id="option-table"></table>
+    </form>
+
+    <div class="nav">
+      <button id="btnPrev" type="button">上一题</button>
+      <button id="btnNext" type="button">下一题</button>
+      <span class="counter" id="qno-text"></span>
+      <select id="selQNo" aria-label="跳转题号"></select>
+    </div>
+  </div>
+
+<script>
+  const QUESTIONS = [{"qno":1,"question":"以下属于sdn设备角色的有","options":[{"text":"spine","correct":true},{"text":"server leaf","correct":true},{"text":"service leaf","correct":true},{"text":"border leaf","correct":true}]},{"qno":2,"question":"多机多卡训练一般包括哪些训练环境？","options":[{"text":"以上都不对","correct":false},{"text":"Slurm","correct":true},{"text":"K8S","correct":true},{"text":"裸机","correct":true}]},{"qno":3,"question":"在“以平台为中心”的成熟度等级中，其核心理念是什么？","options":[{"text":"适用于 Linux 的 Windows 子系统","correct":false},{"text":"以平台为中心","correct":true},{"text":"构建新质网络","correct":false},{"text":"作为辅助工具，减少运维工程师手动查找 OID 和调试验证的工作量","correct":false}]},{"qno":4,"question":"项目规划阶段，任务颗粒度拆解的目的是便于项目管理和控制。","options":[{"text":"对","correct":true},{"text":"协同编辑","correct":false},{"text":"/reset","correct":false},{"text":"基于 Token 吞吐量与实时负载动态调度","correct":false}]},{"qno":5,"question":"华为 CloudCampus 解决方案的亮点功能包括以下哪些?","options":[{"text":"有线 & 无线融合（统一转发、统一认证、统一策略执行）","correct":true},{"text":"极简部署（物理 & 虚拟网络自动化、用户策略自动化）","correct":true},{"text":"智能运维（实时体验可视、精准故障分析、智能网络调优）","correct":true},{"text":"查询结果缓存数据","correct":false}]},{"qno":6,"question":"AI Agent 与普通聊天机器人相比，核心特点是什么？","options":[{"text":"智慧医疗评级","correct":false},{"text":"绑定 Key 与原始文件","correct":false},{"text":"被成百倍放大","correct":false},{"text":"能根据目标进行规划，并调用工具完成任务","correct":true}]},{"qno":7,"question":"AI+良率案例中，算法检索相似Pattern的准确率达到多少？","options":[{"text":"根据各工厂业务需求规划本地网络服务和冗余","correct":false},{"text":"是否命中正确 Agent","correct":false},{"text":".85","correct":true},{"text":"有线用户流量根据 VLAN 在 Edge 节点直接入虚拟网络","correct":false}]},{"qno":8,"question":"在Cisco SDA网络中，Catalyst Center主要负责网络管理、自动化部署和可观测性。Catalyst Center暂时不可用，并不意味着已经正常建立的Fabric业务转发会立即全部中断。","options":[{"text":"正确","correct":true},{"text":"错误","correct":false}]},{"qno":9,"question":"运维风险管理四大应对策略不含以下哪种？","options":[{"text":"以上都不对","correct":false},{"text":"简化","correct":true},{"text":"任务规划或记忆机制","correct":false},{"text":"故障定位","correct":false}]},{"qno":10,"question":"在Cisco SDA中，VN（Virtual Network）与SGT（Scalable Group Tag）的主要区别是什么？","options":[{"text":"Volcano或Kubeflow调度组件","correct":false},{"text":"同步复制流量的承载网络往往时延和稳定性要求极高","correct":false},{"text":"3g.30gb","correct":false},{"text":"VN用于业务宏分段，SGT用于组级访问控制","correct":true}]},{"qno":11,"question":"未来智算集群组网的高冗余技术特点有哪些？","options":[{"text":"双上联","correct":true},{"text":"多轨道","correct":true},{"text":"双平面","correct":true},{"text":"数据多写网关","correct":false}]},{"qno":12,"question":"项目中解决 “文档版本已更改、页面被锁定” 的核心方案是？","options":[{"text":"绑定 Key 与原始文件","correct":true},{"text":"溯源和检测难度较小","correct":false},{"text":"落实监管安全防线","correct":false},{"text":"根据各工厂业务需求规划本地网络服务和冗余","correct":false}]},{"qno":13,"question":"Agent 开发时，先跑通一条最小闭环，比一开始覆盖所有分支场景更适合排查问题？","options":[{"text":"正确","correct":true},{"text":"错误","correct":false}]},{"qno":14,"question":"传统网络安全能力（如 WAF、DDoS 防护）在 AI 时代已经完全失效，可以被完全替换为 AI 专用安全产品。","options":[{"text":"正确","correct":false},{"text":"错误","correct":true}]},{"qno":15,"question":"当用户在配置对比列表中选中某行数据并点击“复制”按钮后，系统不仅会展开右侧的详情抽屉，还会自动将抽屉内的视图滚动至该条数据所在的位置并使其居中，同时施加红色高亮效果，以便用户直观确认操作目标。","options":[{"text":"正确","correct":true},{"text":"错误","correct":false}]},{"qno":16,"question":"企业在 Nginx 管理中面临 “证书治理难” 痛点，若证书更新不及时，最直观的后果是？","options":[{"text":"系统开发","correct":false},{"text":"渲染器（Renderer）","correct":false},{"text":"业务中断、浏览器告警、用户无法访问","correct":true},{"text":"智弈智枢","correct":false}]},{"qno":17,"question":"关于思科设备配置aaa后的说法正确的是：","options":[{"text":"可以灵活配置，要注意整体配置的协调","correct":true},{"text":"端口速率是否正常","correct":false},{"text":"华讯可以和客户合作开发医疗大模型","correct":false},{"text":"灵活性高","correct":false}]},{"qno":18,"question":"奖牌架构中，铜层（Bronze）的核心原则是什么？","options":[{"text":"GPU Operator","correct":false},{"text":"API 丰富易集成","correct":false},{"text":"网络设备","correct":false},{"text":"只追加，不修改","correct":true}]},{"qno":19,"question":"以下哪项不属于材料中总结的软件供应链攻击特点？","options":[{"text":"溯源和检测难度较小","correct":true},{"text":"网络硬件","correct":false},{"text":"word","correct":false},{"text":"设备D（接口：VLAN 11，接口地址：10.16.1.252，VRRP虚地址：10.16.1.254，VRRP优先级：110）","correct":false}]},{"qno":20,"question":"以下哪项攻击手段被材料描述为“门槛极低，不需要懂任何渗透技术，只需要自然语言和想象力”？","options":[{"text":"制定统一的网络架构和安全策略标准","correct":false},{"text":"被成百倍放大","correct":false},{"text":"端口号","correct":false},{"text":"提示词注入 (Prompt Injection)","correct":true}]}];
+
+  const titleEl = document.getElementById("question-title");
+  const tableEl = document.getElementById("option-table");
+  const qnoEl = document.getElementById("QNo");
+  const counterEl = document.getElementById("qno-text");
+  const prevBtn = document.getElementById("btnPrev");
+  const nextBtn = document.getElementById("btnNext");
+  const selectEl = document.getElementById("selQNo");
+
+  selectEl.innerHTML = QUESTIONS.map(
+    (q) => '<option value="' + q.qno + '">' + q.qno + "</option>",
+  ).join("");
+
+  function render(qno) {
+    const question = QUESTIONS.find((item) => item.qno === qno);
+    if (!question) return;
+
+    qnoEl.value = String(qno);
+    titleEl.textContent = question.question;
+    counterEl.textContent = qno + " / " + QUESTIONS.length;
+    prevBtn.disabled = qno <= 1;
+    nextBtn.disabled = qno >= QUESTIONS.length;
+    selectEl.value = String(qno);
+
+    const multi = question.options.filter((item) => item.correct).length > 1;
+    tableEl.innerHTML = question.options
+      .map(
+        (option, index) =>
+          '<tr><td><input type="' +
+          (multi ? "checkbox" : "radio") +
+          '" name="Answer" value="' +
+          index +
+          '"></td><td>' +
+          option.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+          "</td></tr>",
+      )
+      .join("");
+  }
+
+  let current = 1;
+
+  function go(qno) {
+    current = Math.min(Math.max(qno, 1), QUESTIONS.length);
+    render(current);
+  }
+
+  prevBtn.addEventListener("click", () => go(current - 1));
+  nextBtn.addEventListener("click", () => go(current + 1));
+  selectEl.addEventListener("change", () => go(Number(selectEl.value)));
+
+  render(current);
+</script>
+</body>
+</html>
