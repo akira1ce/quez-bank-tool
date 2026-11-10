@@ -1,4 +1,4 @@
-import { CFG, sleep, normalize, stripPrefix, setStatus } from "./shared.js";
+import { CFG, sleep, normalize, setStatus } from "./shared.js";
 
 const KEY_ANSWERS = "auto_solver_answers_v6";
 
@@ -30,17 +30,13 @@ export function readPage() {
       if (!input) return [];
 
       const tds = row.querySelectorAll("td");
-      const text = stripPrefix(
-        tds.length ? tds[tds.length - 1].innerText : "",
-      );
+      const text = tds.length ? tds[tds.length - 1].innerText : "";
 
       return [
         {
           input,
-          text,
           normalizedText: normalize(text),
           disabled: input.disabled,
-          checked: input.checked,
         },
       ];
     },
@@ -54,74 +50,33 @@ export function readPage() {
 }
 
 // ============================================================
-// 题目识别：全等优先 -> include 兜底
+// 题干匹配：全等优先 -> include 兜底
 // ============================================================
 function findQuestion(db, page) {
   const target = normalize(page.title);
-  if (!target) return { question: null, reason: "未读取到题干" };
+  if (!target) return null;
 
   const entries = db.questions
-    .filter((q) => q && typeof q.question === "string")
-    .map((q) => ({ q, text: normalize(q.question) }))
-    .filter((entry) => entry.text);
+    .filter((question) => question.question)
+    .map((question) => ({ question, text: normalize(question.question) }));
 
-  if (!entries.length) {
-    return { question: null, reason: "答案库没有有效题目" };
-  }
+  const exact = entries.find(({ text }) => text === target);
+  if (exact) return exact.question;
 
-  const pick = (list) => {
-    const byNo =
-      page.qno == null
-        ? undefined
-        : list.find(({ q }) => Number.parseInt(q.qno, 10) === page.qno);
-    return byNo ?? (list.length === 1 ? list[0] : null);
-  };
-
-  const exactHits = entries.filter(({ text }) => text === target);
-  if (exactHits.length) {
-    const hit = pick(exactHits);
-    return hit
-      ? { question: hit.q, reason: "题干全等" }
-      : { question: null, reason: "题干全等有多条，无法按题号区分" };
-  }
-
-  const includeHits = entries.filter(
+  const included = entries.find(
     ({ text }) => text.includes(target) || target.includes(text),
   );
-  const hit = pick(includeHits);
-
-  if (!hit) {
-    return {
-      question: null,
-      reason: includeHits.length
-        ? "题干部分匹配多条，无法按题号区分"
-        : "答案库中找不到该题干",
-    };
-  }
-
-  return { question: hit.q, reason: "题干包含匹配" };
-}
-
-function getAnswerTexts(question) {
-  if (!Array.isArray(question.answer)) {
-    return { ok: false, texts: [], reason: "answer 必须是数组" };
-  }
-
-  const texts = question.answer
-    .map((text) => String(text ?? "").trim())
-    .filter((text) => normalize(text));
-
-  return texts.length
-    ? { ok: true, texts, reason: "" }
-    : { ok: false, texts: [], reason: "answer 为空" };
+  return included?.question ?? null;
 }
 
 // ============================================================
 // 选项匹配：全等优先 -> include 兜底
 // ============================================================
 function matchOptions(answerTexts, pageOptions) {
+  if (!Array.isArray(answerTexts) || !answerTexts.length) return null;
+
   const used = new Set();
-  const matches = [];
+  const options = [];
 
   for (const answerText of answerTexts) {
     const target = normalize(answerText);
@@ -129,36 +84,20 @@ function matchOptions(answerTexts, pageOptions) {
       (option) => !used.has(option) && !option.disabled && option.normalizedText,
     );
 
-    let mode = "exact";
-    let option = pool.find((item) => item.normalizedText === target);
-
-    if (!option) {
-      mode = "include";
-      const hits = pool.filter(({ normalizedText }) =>
-        normalizedText.includes(target) || target.includes(normalizedText),
+    const option =
+      pool.find((item) => item.normalizedText === target) ??
+      pool.find(
+        ({ normalizedText }) =>
+          normalizedText.includes(target) || target.includes(normalizedText),
       );
-      hits.sort(
-        (a, b) =>
-          Math.abs(a.normalizedText.length - target.length) -
-          Math.abs(b.normalizedText.length - target.length),
-      );
-      option = hits[0];
-    }
 
-    if (!option) {
-      return { ok: false, matches: [], reason: `页面找不到答案：${answerText}` };
-    }
+    if (!option) return null;
 
     used.add(option);
-    matches.push({ answerText, option, mode });
+    options.push(option);
   }
 
-  return {
-    ok: true,
-    matches,
-    usedInclude: matches.some((match) => match.mode === "include"),
-    reason: "匹配成功",
-  };
+  return options;
 }
 
 function prepareCurrent() {
@@ -168,26 +107,17 @@ function prepareCurrent() {
   const page = readPage();
   if (!page.title) return { ok: false, reason: "未读取到题干" };
 
-  const found = findQuestion(db, page);
-  if (!found.question) return { ok: false, reason: found.reason };
-
-  const answers = getAnswerTexts(found.question);
-  if (!answers.ok) return { ok: false, reason: answers.reason };
+  const question = findQuestion(db, page);
+  if (!question) return { ok: false, reason: "答案库中找不到该题干" };
 
   if (!page.options.length) {
     return { ok: false, reason: "页面没有可匹配的选项" };
   }
 
-  const matched = matchOptions(answers.texts, page.options);
-  if (!matched.ok) return { ok: false, reason: matched.reason };
+  const options = matchOptions(question.answer, page.options);
+  if (!options) return { ok: false, reason: "页面找不到匹配的答案" };
 
-  return {
-    ok: true,
-    page,
-    question: found.question,
-    matches: matched.matches,
-    usedInclude: matched.usedInclude,
-  };
+  return { ok: true, page, question, options };
 }
 
 export function solveCurrent() {
@@ -199,18 +129,17 @@ export function solveCurrent() {
     return false;
   }
 
-  for (const { option } of result.matches) {
-    if (!option.input.checked) {
-      option.input.click();
+  for (const { input } of result.options) {
+    if (!input.checked) {
+      input.click();
     }
   }
 
   console.log("[Solver] 题目:", result.page.title);
   console.log("[Solver] 答案库:", result.question.question);
-  console.log("[Solver] 匹配:", result.matches);
+  console.log("[Solver] 匹配:", result.options);
 
-  const tip = result.usedInclude ? "（含 include 兜底）" : "";
-  setStatus(`已选 ${result.matches.length} 项${tip}`);
+  setStatus(`已选 ${result.options.length} 项`);
   return true;
 }
 
@@ -310,17 +239,13 @@ export function getCurrentBankEntry() {
   const page = readPage();
   if (!page.title) return { ok: false, reason: "未读取到题干" };
 
-  const found = findQuestion(db, page);
-  if (!found.question) return { ok: false, reason: found.reason };
-
-  const answers = getAnswerTexts(found.question);
-  if (!answers.ok) return { ok: false, reason: answers.reason };
+  const question = findQuestion(db, page);
+  if (!question) return { ok: false, reason: "答案库中找不到该题干" };
 
   return {
     ok: true,
-    qno: found.question.qno ?? null,
-    question: found.question.question,
-    answerTexts: answers.texts,
-    matchedBy: found.reason,
+    qno: question.qno ?? null,
+    question: question.question,
+    answerTexts: question.answer,
   };
 }

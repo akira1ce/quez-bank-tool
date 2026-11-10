@@ -20,12 +20,6 @@ export function normalize(text) {
     .toLowerCase();
 }
 
-export function stripPrefix(text) {
-  return String(text ?? "")
-    .replace(/^\s*(?:[（(]\s*[A-Za-z]\s*[)）]|[A-Za-z]\s*[.、．:：)）])\s*/, "")
-    .trim();
-}
-
 export function setStatus(message) {
   const el = document.getElementById("as-status");
   if (el) el.textContent = message;

@@ -100,7 +100,6 @@ function renderBankCard(entry) {
     </div>
     <div class="as-card-question">${escapeHtml(entry.question)}</div>
     <div class="as-card-answers">${answers}</div>
-    <div class="as-card-meta">${escapeHtml(entry.matchedBy)}</div>
   `;
 }
 
