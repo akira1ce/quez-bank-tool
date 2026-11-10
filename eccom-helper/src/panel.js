@@ -160,15 +160,16 @@ export function init() {
 
     <div id="as-page-tools" style="display:none">
       <button id="as-select-radios" type="button">全选当前页面单选项</button>
-      <button id="as-copy-exam" type="button" style="margin-top:8px">
-        复制本页答对题 JSON
+      <button id="as-fetch-exam" type="button" style="margin-top:8px">
+        获取本页答对题 JSON
       </button>
-      <button id="as-download-exam" type="button" style="margin-top:8px">
-        下载本页答对题 JSON
-      </button>
+      <div class="as-tools-row">
+        <button id="as-copy-exam" type="button" disabled>复制</button>
+        <button id="as-download-exam" type="button" disabled>下载</button>
+      </div>
       <div class="as-tools-note">
         逐个点击每个 td 中的单选框。<br>
-        从考试结果页收集“得分=满分”的题目，生成答案 JSON 并复制或下载。
+        先获取本页答对题 JSON，再复制或下载。
       </div>
     </div>
 
@@ -182,6 +183,12 @@ export function init() {
   let activeMode = "answer";
   let hidden = false;
   let jsonOpen = false;
+  let examJson = null;
+
+  const setExportEnabled = (enabled) => {
+    $("#as-copy-exam").disabled = !enabled;
+    $("#as-download-exam").disabled = !enabled;
+  };
 
   const setHidden = (value) => {
     hidden = value;
@@ -232,39 +239,40 @@ export function init() {
     setStatus(`已点击 ${count} 个单选项`);
   };
 
-  $("#as-copy-exam").onclick = async () => {
+  $("#as-fetch-exam").onclick = () => {
     const built = buildExamJson();
 
     if (!built.ok) {
+      examJson = null;
+      setExportEnabled(false);
       setStatus(`生成失败：${built.reason}`);
       return;
     }
 
-    const copied = await copyText(built.json);
+    examJson = built;
+    setExportEnabled(true);
+    setStatus(`已获取 ${examSummary(built)}，可复制或下载`);
+  };
+
+  $("#as-copy-exam").onclick = async () => {
+    const copied = await copyText(examJson.json);
 
     if (!copied) {
-      console.warn("[Solver] 复制失败，JSON 如下:", built.json);
+      console.warn("[Solver] 复制失败，JSON 如下:", examJson.json);
       setStatus("复制失败：请检查剪贴板权限，JSON 已输出到控制台");
       return;
     }
 
-    setStatus(`已复制 ${examSummary(built)}`);
+    setStatus(`已复制 ${examSummary(examJson)}`);
   };
 
   $("#as-download-exam").onclick = () => {
-    const built = buildExamJson();
-
-    if (!built.ok) {
-      setStatus(`生成失败：${built.reason}`);
-      return;
-    }
-
     const now = new Date();
     const pad = (n) => String(n).padStart(2, "0");
     const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 
-    downloadJson(`eccom-answers-${timestamp}.json`, built.json);
-    setStatus(`已下载 ${examSummary(built)}`);
+    downloadJson(`eccom-answers-${timestamp}.json`, examJson.json);
+    setStatus(`已下载 ${examSummary(examJson)}`);
   };
 
   document.addEventListener("keydown", (event) => {

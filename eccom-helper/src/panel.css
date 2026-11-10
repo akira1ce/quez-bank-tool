@@ -94,7 +94,13 @@
   margin-top: 8px;
 }
 
+.as-tools-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+
 .as-tools-note { font-size: 11.5px; color: #9ca3af; margin-top: 6px; }
+
+#auto-solver-box button:disabled { opacity: .45; cursor: not-allowed; }
+#auto-solver-box button:disabled:hover,
+#auto-solver-box button:disabled:active { background: #ffffff; }
 
 #as-page-tools button { width: 100%; }
 
