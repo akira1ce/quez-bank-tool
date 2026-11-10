@@ -4,7 +4,8 @@
   "description": "Excel 题库转 TXT 知识库工具",
   "main": "excel_to_txt.js",
   "scripts": {
-    "convert": "node excel_to_txt.js"
+    "convert": "node excel_to_txt.js",
+    "build:eccom": "node eccom-helper/build.mjs"
   },
   "keywords": [
     "excel",
@@ -16,6 +17,8 @@
   "license": "MIT",
   "dependencies": {
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
-

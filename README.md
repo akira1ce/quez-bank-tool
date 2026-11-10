@@ -224,6 +224,18 @@ Tampermonkey 用户脚本，用于在网页上搜索题库内容。
 - 使用 `-` 和 `+` 按钮切换上一题/下一题
 - 在输入框中输入题号并回车可跳转到指定题目
 
+### 6. 华讯助手脚本 (`scripts/eccom-helper.js`)
+
+Tampermonkey 用户脚本，用于在内部考试页面自动匹配题库答案。源码在 `eccom-helper/src/`（ES 模块 + `panel.css`），用 esbuild 打包成单个可安装文件：
+
+```bash
+npm run build:eccom
+```
+
+产物为 `scripts/eccom-helper.js`，将整个文件内容复制到 Tampermonkey 即可。
+
+表格转答案 JSON 的提示词在 `eccom-helper/prompts/table-to-answers-json.md`，不参与打包。
+
 ## 工作流程示例
 
 ### 完整的工作流程
@@ -250,14 +262,20 @@ node scripts/remove_duplicates.js 题库汇总.txt 题库汇总_去重.txt
 
 ```
 quez-bank-tool/
+├── core/                              # 题库处理脚本
+│   ├── excel_to_txt_universal.js      # Excel 转 TXT 转换脚本
+│   ├── merge_txt.js                   # TXT 文件合并脚本
+│   ├── check_duplicates.js            # 重复题目检查脚本
+│   └── remove_duplicates.js           # 去重脚本
+├── eccom-helper/                      # 华讯助手源码
+│   ├── src/                           # ES 模块 + panel.css
+│   ├── prompts/                       # 表格转答案 JSON 提示词
+│   └── build.mjs                      # esbuild 打包脚本
 ├── scripts/
-│   ├── excel_to_txt_universal.js  # Excel 转 TXT 转换脚本
-│   ├── merge_txt.js                # TXT 文件合并脚本
-│   ├── check_duplicates.js         # 重复题目检查脚本
-│   ├── remove_duplicates.js        # 去重脚本
-│   └── qs.js                       # Tampermonkey 浏览器脚本
-├── package.json                    # 项目配置文件
-└── README.md                       # 项目说明文档
+│   ├── quez-bank-tool.js              # Tampermonkey 搜索脚本
+│   └── eccom-helper.js                # 华讯助手（构建产物）
+├── package.json                       # 项目配置文件
+└── README.md                          # 项目说明文档
 ```
 
 ## 依赖项
