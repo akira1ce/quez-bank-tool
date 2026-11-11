@@ -15,7 +15,7 @@ const header = `// ==UserScript==
 
 await build({
   entryPoints: [path.join(import.meta.dirname, "src/main.js")],
-  outfile: path.join(import.meta.dirname, "..", "scripts", "eccom-helper.js"),
+  outfile: path.join(import.meta.dirname, "scripts", "eccom-helper.js"),
   bundle: true,
   format: "iife",
   target: "es2020",

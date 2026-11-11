@@ -12,10 +12,10 @@ quez-bank-tool/
 │   ├── check_duplicates.js            # 检查重复题目
 │   ├── remove_duplicates.js           # 去除重复题目
 │   └── merge_answers_json.js          # 聚合答案 JSON 并去重
-├── eccom-helper/                      # 助手源码（华讯/云学堂）
-│   ├── src/                           # ES 模块 + panel.css
-│   ├── prompts/                       # 表格转答案 JSON 提示词
-│   └── build.mjs                      # esbuild 打包脚本
+├── src/                               # 助手源码（华讯/云学堂）
+│   └── panel.css                      # 面板样式（其余为 ES 模块）
+├── prompt.md                          # 表格转答案 JSON 提示词
+├── build.mjs                          # esbuild 打包脚本
 ├── scripts/
 │   ├── eccom-helper.js                # 华讯助手（构建产物）
 │   └── quez-bank-tool.js              # 另一平台的 TXT 搜索脚本
@@ -112,14 +112,14 @@ npm run merge:answers
 - `internal.eccom.com.cn`：一页一题，翻页后页面刷新，脚本重新执行
 - `eccom.yunxuetang.cn`：所有题目列在同一页
 
-两个平台共用同一套匹配逻辑，差异只在 `eccom-helper/src/platforms.js` 的选择器配置里。
+两个平台共用同一套匹配逻辑，差异只在 `src/platforms.js` 的选择器配置里。
 
 ### 构建
 
-源码在 `eccom-helper/src/`（ES 模块 + CSS），由 esbuild 打包成单个可安装文件：
+源码在 `src/`（ES 模块 + CSS），由 esbuild 打包成单个可安装文件：
 
 ```bash
-npm run build:eccom
+npm run build
 ```
 
 产物为 `scripts/eccom-helper.js`。安装时把整个文件内容复制到 Tampermonkey 新建脚本中即可。
@@ -160,7 +160,7 @@ npm run build:eccom
 
 ### 表格转答案 JSON 提示词
 
-在 `eccom-helper/prompts/table-to-answers-json.md`，用于把考试结果表格整理成上面的 JSON，不参与打包。
+在 `prompt.md`，用于把考试结果表格整理成上面的 JSON，不参与打包。
 
 ## 本地测试模拟考试页
 
