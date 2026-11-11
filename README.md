@@ -1,6 +1,6 @@
 # 题库工具集 (Question Bank Tool)
 
-用于转换、合并、去重题库，并把收集到的答案 JSON 聚合成答案库；附带「华讯助手」Tampermonkey 脚本，可在内部考试页面自动匹配合适的选项。
+用于转换、合并、去重题库，并把收集到的答案 JSON 聚合成答案库；附带 Tampermonkey 助手脚本，支持华讯和云学堂两个平台，可匹配题库并自动选中答案。
 
 ## 目录结构
 
@@ -12,15 +12,16 @@ quez-bank-tool/
 │   ├── check_duplicates.js            # 检查重复题目
 │   ├── remove_duplicates.js           # 去除重复题目
 │   └── merge_answers_json.js          # 聚合答案 JSON 并去重
-├── eccom-helper/                      # 华讯助手源码
+├── eccom-helper/                      # 助手源码（华讯/云学堂）
 │   ├── src/                           # ES 模块 + panel.css
 │   ├── prompts/                       # 表格转答案 JSON 提示词
 │   └── build.mjs                      # esbuild 打包脚本
 ├── scripts/
 │   ├── eccom-helper.js                # 华讯助手（构建产物）
-│   └── quez-bank-tool.js              # 旧版搜索脚本（legacy）
+│   └── quez-bank-tool.js              # 另一平台的 TXT 搜索脚本
 ├── test/
-│   ├── mock-exam.html                 # 本地模拟考试页
+│   ├── mock-exam.html                 # 华讯：一页一题模拟页
+│   ├── mock-yunxuetang.html           # 云学堂：整页列题模拟页
 │   └── mock-answers.json              # 模拟页对应的答案库
 ├── resouces/                          # 收集到的答案 JSON（聚合输入）
 ├── package.json
@@ -104,7 +105,14 @@ npm run merge:answers
 
 ## 华讯助手
 
-在内部考试页面（`internal.eccom.com.cn`）自动匹配题库并选中答案，同时支持从考试结果页导出答对题的 JSON。
+在考试页面匹配题库并选中答案，同时支持从考试结果页导出答对题的 JSON。
+
+支持两个平台：
+
+- `internal.eccom.com.cn`：一页一题，翻页后页面刷新，脚本重新执行
+- `eccom.yunxuetang.cn`：所有题目列在同一页
+
+两个平台共用同一套匹配逻辑，差异只在 `eccom-helper/src/platforms.js` 的选择器配置里。
 
 ### 构建
 
@@ -120,8 +128,12 @@ npm run build:eccom
 
 按反引号 `` ` `` 显示/隐藏面板，面板分两个标签页：
 
-- **答题**：上一题 / 答题 / 下一题；下方显示当前题目的匹配结果；「答案 JSON」可展开粘贴答案库并保存
+- **答题**：获取题目 / 答题；上一题、下一题只切换脚本内部的题目列表，不点击页面按钮；下方显示当前题目的匹配结果；「答案 JSON」可展开粘贴答案库并保存
 - **工具**：全选当前页面单选项；获取本页答对题 JSON 后复制或下载
+
+「获取题目」会扫描当前页面并追加到内部列表，按题干去重。华讯一页只有一题，上一题/下一题保持禁用；云学堂会一次识别本页所有题目，切题时滚动到对应位置。
+
+云学堂的选项选择器目前是占位默认值（`label` + `input[type="radio"], input[type="checkbox"]`），拿到真实 DOM 后在 `platforms.js` 里替换 `options.item / input / text` 即可。
 
 匹配规则：
 
@@ -152,27 +164,30 @@ npm run build:eccom
 
 ## 本地测试模拟考试页
 
-`test/mock-exam.html` 复刻了考试页的关键 DOM（`#ecmc_body_content`、`#frmAnswer`、`#QNo` 等），内置 20 道来自当前题库的题目（12 单选、4 多选、4 判断）。
+`test/mock-exam.html` 复刻了华讯考试页的关键 DOM（`#ecmc_body_content`、`#frmAnswer`、`#QNo` 等），内置 20 道来自当前题库的题目（12 单选、4 多选、4 判断）。
+
+`test/mock-yunxuetang.html` 复刻云学堂的整页列题结构（`li[name="li_Question"]`、`.col-18 > div`、选项 `label` + radio/checkbox），题目相同，可直接复用同一份 `mock-answers.json`。
 
 测试步骤：
 
 1. 在 Tampermonkey 里给「华讯助手」临时加一行 `// @match file:///*`，并开启扩展的「允许访问文件网址」
-2. 打开 `test/mock-exam.html`
+2. 打开 `test/mock-exam.html` 或 `test/mock-yunxuetang.html`
 3. 按反引号展开面板，把 `test/mock-answers.json` 粘贴到「答案 JSON」并保存
-4. 点击「答题」「下一题」，检查选项是否被正确选中
+4. 点击「获取题目」再点「答题」，检查选项是否被正确选中
+5. 云学堂页可用面板的「上一题 / 下一题」切题；华讯页用页面自身的「下一题」切题后，重新点「获取题目」再答题（模拟页不会整页刷新）
 
 测试完成后删掉临时的 `@match file:///*`。
 
-## 旧版脚本 `scripts/quez-bank-tool.js`
+## 另一平台的搜索脚本 `scripts/quez-bank-tool.js`
 
-这是最早的做法（旧 README 里叫 `qs.js`），保留作历史参考，不再更新：
+这是面向「所有题目列在同一页」平台的另一套脚本，和 `eccom-helper.js` 的自动答题逻辑相互独立：
 
 - 单文件用户脚本，`@match *://*/*`，无需构建
-- 把合并 TXT 生成的汇总内容粘贴进 `QUESTION_BANK_CONTENT` 变量
-- 提供关键词/正则搜索、获取当前页面题目、上一题/下一题导航
+- 题库输入是合并 TXT 的汇总内容，粘贴进 `QUESTION_BANK_CONTENT` 变量
+- 提供关键词/正则搜索、题目列表导航，不会自动勾选答案
 - 面板可拖拽，宽高和配色保存在 `localStorage`
 
-它的题库输入是 TXT 文本，需要手动粘贴，也没有自动答题能力。现在推荐使用 `core/merge_answers_json.js` 聚合答案 JSON，再配合 `scripts/eccom-helper.js` 使用。
+两套脚本的题库来源不同：quez-bank-tool 用 TXT，eccom-helper 用答案 JSON。
 
 ## 依赖
 

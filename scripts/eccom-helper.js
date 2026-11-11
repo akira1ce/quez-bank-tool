@@ -1,29 +1,19 @@
 // ==UserScript==
 // @name         华讯助手
 // @namespace    http://tampermonkey.net/
-// @version      7.9
-// @description  题干/答案全等优先，include 兜底；紧凑工具型 UI；JSON 输入区可折叠；支持从考试结果页导入答对题目
+// @version      8.0
+// @description  支持华讯/云学堂；手动获取题目、内部切题；题干/答案全等优先，include 兜底
 // @match        *://internal.eccom.com.cn/*
+// @match        *://eccom.yunxuetang.cn/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @run-at       document-idle
 // ==/UserScript==
 (() => {
   // eccom-helper/src/panel.css
-  var panel_default = '#auto-solver-box {\n  position: fixed; top: 12px; right: 12px; z-index: 999999;\n  width: 320px;\n  background: #ffffff; color: #1f2937;\n  border: 1px solid #e5e7eb; border-radius: 10px;\n  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);\n  padding: 10px;\n  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  font-size: 13px; line-height: 1.45;\n}\n#auto-solver-box, #auto-solver-box * { box-sizing: border-box; }\n#auto-solver-box button {\n  all: unset;\n  box-sizing: border-box;\n  display: inline-flex; align-items: center; justify-content: center;\n  min-height: 30px; padding: 0 10px;\n  border: 1px solid #d1d5db; border-radius: 7px;\n  background: #ffffff; color: #1f2937;\n  font: 500 12.5px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  cursor: pointer; text-align: center;\n  transition: background .15s, border-color .15s, color .15s;\n}\n#auto-solver-box button:hover { background: #f3f4f6; }\n#auto-solver-box button:active { background: #e5e7eb; }\n#auto-solver-box button.as-primary {\n  background: #2563eb; border-color: #2563eb; color: #ffffff;\n}\n#auto-solver-box button.as-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }\n\n.as-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }\n.as-seg { display: inline-flex; padding: 2px; background: #f3f4f6; border-radius: 8px; gap: 2px; }\n.as-seg-btn { min-height: 26px !important; padding: 0 14px !important; border: 0 !important; background: transparent !important; color: #6b7280 !important; border-radius: 6px !important; font-weight: 500 !important; }\n.as-seg-btn:hover { color: #1f2937 !important; }\n.as-seg-btn.is-active { background: #ffffff !important; color: #111827 !important; box-shadow: 0 1px 2px rgba(0,0,0,.08); }\n.as-hint { font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9ca3af; padding: 3px 6px; border: 1px solid #e5e7eb; border-radius: 5px; }\n\n.as-card {\n  border: 1px solid #e5e7eb; border-radius: 8px;\n  padding: 10px 12px; margin-bottom: 10px;\n  background: #fafbfc;\n}\n.as-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }\n.as-card-tag { font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: .04em; text-transform: uppercase; }\n.as-card-state { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }\n.as-state-hit { color: #047857; background: #ecfdf5; }\n.as-state-miss { color: #b45309; background: #fffbeb; }\n.as-card-question { font-size: 13px; color: #111827; margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }\n.as-card-answers { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }\n.as-card-answers li {\n  font-size: 12.5px; color: #065f46; background: #ecfdf5;\n  border: 1px solid #d1fae5; border-radius: 6px;\n  padding: 5px 8px; white-space: pre-wrap; word-break: break-word;\n}\n.as-card-reason { font-size: 12.5px; color: #b45309; white-space: pre-wrap; word-break: break-word; }\n\n.as-actions { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 6px; margin-bottom: 10px; }\n.as-actions button { width: 100%; }\n\n.as-disclosure {\n  all: unset;\n  box-sizing: border-box;\n  display: flex; align-items: center; gap: 6px; width: 100%;\n  padding: 7px 10px; margin-bottom: 8px;\n  border: 1px dashed #d1d5db; border-radius: 7px;\n  color: #4b5563; font-size: 12.5px; cursor: pointer;\n  background: #ffffff;\n}\n.as-disclosure:hover { background: #f9fafb; }\n.as-caret { display: inline-block; width: 12px; color: #9ca3af; transition: transform .15s; }\n.as-disclosure.is-open .as-caret { transform: rotate(90deg); }\n.as-count { margin-left: auto; font-size: 11px; color: #6b7280; }\n\n.as-json-wrap { margin-bottom: 10px; }\n.as-json-wrap textarea {\n  display: block; width: 100%; height: 120px; min-height: 120px;\n  padding: 8px; border: 1px solid #d1d5db; border-radius: 7px;\n  background: #ffffff; color: #111827;\n  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;\n  resize: vertical; outline: none;\n  margin-top: 8px;\n}\n.as-json-wrap textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }\n.as-json-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }\n.as-json-actions button { width: 100%; }\n\n.as-status {\n  font-size: 12px; color: #6b7280;\n  min-height: 16px; max-height: 140px; overflow-y: auto;\n  white-space: pre-wrap; word-break: break-word;\n  padding: 6px 8px; background: #f9fafb; border-radius: 6px;\n  border: 1px solid #f3f4f6;\n  margin-top: 8px;\n}\n\n.as-tools-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }\n\n.as-tools-note { font-size: 11.5px; color: #9ca3af; margin-top: 6px; }\n\n#auto-solver-box button:disabled { opacity: .45; cursor: not-allowed; }\n#auto-solver-box button:disabled:hover,\n#auto-solver-box button:disabled:active { background: #ffffff; }\n\n#as-page-tools button { width: 100%; }\n\n@media (max-width: 640px) {\n  #auto-solver-box { width: calc(100vw - 24px); right: 12px; left: 12px; }\n}\n';
+  var panel_default = '#auto-solver-box {\n  position: fixed; top: 12px; right: 12px; z-index: 999999;\n  width: 320px;\n  background: #ffffff; color: #1f2937;\n  border: 1px solid #e5e7eb; border-radius: 10px;\n  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);\n  padding: 10px;\n  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  font-size: 13px; line-height: 1.45;\n}\n#auto-solver-box, #auto-solver-box * { box-sizing: border-box; }\n#auto-solver-box button {\n  all: unset;\n  box-sizing: border-box;\n  display: inline-flex; align-items: center; justify-content: center;\n  min-height: 30px; padding: 0 10px;\n  border: 1px solid #d1d5db; border-radius: 7px;\n  background: #ffffff; color: #1f2937;\n  font: 500 12.5px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  cursor: pointer; text-align: center;\n  transition: background .15s, border-color .15s, color .15s;\n}\n#auto-solver-box button:hover { background: #f3f4f6; }\n#auto-solver-box button:active { background: #e5e7eb; }\n#auto-solver-box button.as-primary {\n  background: #2563eb; border-color: #2563eb; color: #ffffff;\n}\n#auto-solver-box button.as-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }\n\n.as-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }\n.as-seg { display: inline-flex; padding: 2px; background: #f3f4f6; border-radius: 8px; gap: 2px; }\n.as-seg-btn { min-height: 26px !important; padding: 0 14px !important; border: 0 !important; background: transparent !important; color: #6b7280 !important; border-radius: 6px !important; font-weight: 500 !important; }\n.as-seg-btn:hover { color: #1f2937 !important; }\n.as-seg-btn.is-active { background: #ffffff !important; color: #111827 !important; box-shadow: 0 1px 2px rgba(0,0,0,.08); }\n.as-hint { font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9ca3af; padding: 3px 6px; border: 1px solid #e5e7eb; border-radius: 5px; }\n\n.as-card {\n  border: 1px solid #e5e7eb; border-radius: 8px;\n  padding: 10px 12px; margin-bottom: 10px;\n  background: #fafbfc;\n}\n.as-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }\n.as-card-tag { font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: .04em; text-transform: uppercase; }\n.as-card-state { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }\n.as-state-hit { color: #047857; background: #ecfdf5; }\n.as-state-miss { color: #b45309; background: #fffbeb; }\n.as-card-question { font-size: 13px; color: #111827; margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }\n.as-card-answers { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }\n.as-card-answers li {\n  font-size: 12.5px; color: #065f46; background: #ecfdf5;\n  border: 1px solid #d1fae5; border-radius: 6px;\n  padding: 5px 8px; white-space: pre-wrap; word-break: break-word;\n}\n.as-card-reason { font-size: 12.5px; color: #b45309; white-space: pre-wrap; word-break: break-word; }\n\n.as-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }\n.as-actions button { width: 100%; }\n\n.as-disclosure {\n  all: unset;\n  box-sizing: border-box;\n  display: flex; align-items: center; gap: 6px; width: 100%;\n  padding: 7px 10px; margin-bottom: 8px;\n  border: 1px dashed #d1d5db; border-radius: 7px;\n  color: #4b5563; font-size: 12.5px; cursor: pointer;\n  background: #ffffff;\n}\n.as-disclosure:hover { background: #f9fafb; }\n.as-caret { display: inline-block; width: 12px; color: #9ca3af; transition: transform .15s; }\n.as-disclosure.is-open .as-caret { transform: rotate(90deg); }\n.as-count { margin-left: auto; font-size: 11px; color: #6b7280; }\n\n.as-json-wrap { margin-bottom: 10px; }\n.as-json-wrap textarea {\n  display: block; width: 100%; height: 120px; min-height: 120px;\n  padding: 8px; border: 1px solid #d1d5db; border-radius: 7px;\n  background: #ffffff; color: #111827;\n  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;\n  resize: vertical; outline: none;\n  margin-top: 8px;\n}\n.as-json-wrap textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }\n.as-json-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }\n.as-json-actions button { width: 100%; }\n\n.as-status {\n  font-size: 12px; color: #6b7280;\n  min-height: 16px; max-height: 140px; overflow-y: auto;\n  white-space: pre-wrap; word-break: break-word;\n  padding: 6px 8px; background: #f9fafb; border-radius: 6px;\n  border: 1px solid #f3f4f6;\n  margin-top: 8px;\n}\n\n.as-tools-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }\n\n.as-tools-note { font-size: 11.5px; color: #9ca3af; margin-top: 6px; }\n\n#auto-solver-box button:disabled { opacity: .45; cursor: not-allowed; }\n#auto-solver-box button:disabled:hover,\n#auto-solver-box button:disabled:active { background: #ffffff; }\n\n#as-page-tools button { width: 100%; }\n\n@media (max-width: 640px) {\n  #auto-solver-box { width: calc(100vw - 24px); right: 12px; left: 12px; }\n}\n';
 
   // eccom-helper/src/shared.js
-  var CFG = {
-    questionSelector: "#ecmc_body_content div > b",
-    qnoInput: "#QNo",
-    optionRowSelector: "#frmAnswer table tr",
-    optionSelector: 'input[name="Answer"]',
-    nextBtn: "#btnNext",
-    prevBtn: "#btnPrev",
-    gotoSelect: "#selQNo",
-    pageTimeout: 1e4
-  };
-  var sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   function normalize(text) {
     return String(text ?? "").normalize("NFKC").replace(/\s+/g, "").replace(/[，。？！、；：""''（）【】《》,.?!;:"'()\[\]<>·—–\-_]/g, "").toLowerCase();
   }
@@ -150,6 +140,117 @@
     };
   }
 
+  // eccom-helper/src/platforms.js
+  var PLATFORMS = [
+    {
+      id: "eccom",
+      name: "华讯",
+      match: /internal\.eccom\.com\.cn/,
+      questionItem: null,
+      question: "#ecmc_body_content div > b",
+      qno: "#QNo",
+      options: {
+        item: "#frmAnswer table tr",
+        input: 'input[name="Answer"]',
+        text: "td:last-child"
+      }
+    },
+    {
+      id: "yunxuetang",
+      name: "云学堂",
+      match: /eccom\.yunxuetang\.cn/,
+      questionItem: 'li[name="li_Question"]',
+      question: '.col-18 > div[style*="overflow"]',
+      qno: null,
+      // 占位选择器：拿到真实 DOM 后替换 item / input / text
+      options: {
+        item: "label",
+        input: 'input[type="radio"], input[type="checkbox"]',
+        text: null
+      }
+    }
+  ];
+  function getPlatform() {
+    return PLATFORMS.find((platform) => platform.match.test(location.href)) ?? null;
+  }
+  function readOptions(config, scope) {
+    return [...scope.querySelectorAll(config.item)].flatMap((item) => {
+      const input = item.querySelector(config.input);
+      if (!input) return [];
+      const textEl = config.text ? item.querySelector(config.text) : item;
+      const text = (textEl?.innerText ?? "").trim();
+      return [
+        {
+          input,
+          text,
+          normalizedText: normalize(text),
+          disabled: input.disabled
+        }
+      ];
+    });
+  }
+  function readQuestion(platform, scope) {
+    const title = scope.querySelector(platform.question)?.innerText.trim() ?? "";
+    if (!title) return null;
+    const qnoEl = platform.qno ? scope.querySelector(platform.qno) : null;
+    const qno = qnoEl ? Number.parseInt(qnoEl.value, 10) : NaN;
+    return {
+      title,
+      qno: Number.isFinite(qno) ? qno : null,
+      scope,
+      options: platform.options ? readOptions(platform.options, scope) : []
+    };
+  }
+  function readPageQuestions() {
+    const platform = getPlatform();
+    if (!platform) return { platform: null, questions: [] };
+    const scopes = platform.questionItem ? [...document.querySelectorAll(platform.questionItem)] : [document];
+    const questions = scopes.map((scope) => readQuestion(platform, scope)).filter(Boolean);
+    return { platform, questions };
+  }
+
+  // eccom-helper/src/questions.js
+  var items = [];
+  var index = -1;
+  function fetchQuestions() {
+    const { questions } = readPageQuestions();
+    let added = 0;
+    for (const question of questions) {
+      const key = normalize(question.title);
+      if (!key || items.some((item) => item.key === key)) continue;
+      items.push({ key, title: question.title, qno: question.qno });
+      added += 1;
+    }
+    const pageKeys = questions.map((question) => normalize(question.title));
+    if (!items[index] || !pageKeys.includes(items[index].key)) {
+      const nextIndex = items.findIndex((item) => pageKeys.includes(item.key));
+      if (nextIndex >= 0) index = nextIndex;
+    }
+    if (index < 0 && items.length) index = 0;
+    return { found: questions.length, added, total: items.length };
+  }
+  function getCurrentItem() {
+    return items[index] ?? null;
+  }
+  function getPosition() {
+    return { index, total: items.length };
+  }
+  function moveCurrent(delta) {
+    const next = index + delta;
+    if (next < 0 || next >= items.length) return null;
+    index = next;
+    return items[index];
+  }
+  function findDomQuestion(key) {
+    const { questions } = readPageQuestions();
+    return questions.find((question) => normalize(question.title) === key) ?? null;
+  }
+  function focusItem(item) {
+    const dom = findDomQuestion(item.key);
+    dom?.scope.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    return dom;
+  }
+
   // eccom-helper/src/answer.js
   var KEY_ANSWERS = "auto_solver_answers_v6";
   function getAnswerDB() {
@@ -166,33 +267,8 @@
       return null;
     }
   }
-  function readPage() {
-    const qnoEl = document.querySelector(CFG.qnoInput);
-    const titleEl = document.querySelector(CFG.questionSelector);
-    const parsedQno = qnoEl ? Number.parseInt(qnoEl.value, 10) : NaN;
-    const options = [...document.querySelectorAll(CFG.optionRowSelector)].flatMap(
-      (row) => {
-        const input = row.querySelector(CFG.optionSelector);
-        if (!input) return [];
-        const tds = row.querySelectorAll("td");
-        const text = tds.length ? tds[tds.length - 1].innerText : "";
-        return [
-          {
-            input,
-            normalizedText: normalize(text),
-            disabled: input.disabled
-          }
-        ];
-      }
-    );
-    return {
-      qno: Number.isFinite(parsedQno) ? parsedQno : null,
-      title: titleEl?.innerText.trim() || "",
-      options
-    };
-  }
-  function findQuestion(db, page) {
-    const target = normalize(page.title);
+  function findQuestion(db, title) {
+    const target = normalize(title);
     if (!target) return null;
     const entries = db.questions.filter((question) => question.question).map((question) => ({ question, text: normalize(question.question) }));
     const exact = entries.find(({ text }) => text === target);
@@ -220,85 +296,50 @@
     }
     return options;
   }
-  function prepareCurrent() {
+  function getCurrentBankEntry() {
+    const item = getCurrentItem();
+    if (!item) return { ok: false, reason: "请先点击「获取题目」" };
     const db = getAnswerDB();
-    if (!db) return { ok: false, reason: "未配置有效答案 JSON" };
-    const page = readPage();
-    if (!page.title) return { ok: false, reason: "未读取到题干" };
-    const question = findQuestion(db, page);
-    if (!question) return { ok: false, reason: "答案库中找不到该题干" };
-    if (!page.options.length) {
-      return { ok: false, reason: "页面没有可匹配的选项" };
+    if (!db) {
+      return { ok: false, reason: "未配置有效答案 JSON", pageTitle: item.title };
     }
-    const options = matchOptions(question.answer, page.options);
-    if (!options) return { ok: false, reason: "页面找不到匹配的答案" };
-    return { ok: true, page, question, options };
+    const question = findQuestion(db, item.title);
+    if (!question) {
+      return {
+        ok: false,
+        reason: "答案库中找不到该题干",
+        pageTitle: item.title
+      };
+    }
+    return {
+      ok: true,
+      qno: question.qno ?? item.qno,
+      question: question.question,
+      answerTexts: question.answer
+    };
   }
   function solveCurrent() {
-    const result = prepareCurrent();
-    if (!result.ok) {
-      console.warn("[Solver] 未作答:", result.reason);
-      setStatus(`未作答：${result.reason}`);
-      return false;
-    }
-    for (const { input } of result.options) {
-      if (!input.checked) {
-        input.click();
+    const item = getCurrentItem();
+    if (!item) return { ok: false, reason: "请先点击「获取题目」" };
+    const db = getAnswerDB();
+    if (!db) return { ok: false, reason: "未配置有效答案 JSON" };
+    const dom = findDomQuestion(item.key);
+    if (!dom) return { ok: false, reason: "页面已刷新，请重新获取题目" };
+    if (!dom.options.length) return { ok: false, reason: "页面没有可匹配的选项" };
+    const question = findQuestion(db, item.title);
+    if (!question) return { ok: false, reason: "答案库中找不到该题干" };
+    const options = matchOptions(question.answer, dom.options);
+    if (!options) return { ok: false, reason: "页面找不到匹配的答案" };
+    const matched = new Set(options.map(({ input }) => input));
+    for (const option of dom.options) {
+      if (!option.disabled && option.input.checked && !matched.has(option.input)) {
+        option.input.click();
       }
     }
-    console.log("[Solver] 题目:", result.page.title);
-    console.log("[Solver] 答案库:", result.question.question);
-    console.log("[Solver] 匹配:", result.options);
-    setStatus(`已选 ${result.options.length} 项`);
-    return true;
-  }
-  function goNext() {
-    const button = document.querySelector(CFG.nextBtn);
-    if (button && !button.disabled) {
-      button.click();
-      return true;
+    for (const { input } of options) {
+      if (!input.checked) input.click();
     }
-    const page = readPage();
-    const select = document.querySelector(CFG.gotoSelect);
-    if (!select || page.qno == null) return false;
-    const next = page.qno + 1;
-    const option = [...select.options].find(
-      (item) => Number(item.value) === next
-    );
-    if (!option) return false;
-    select.value = option.value;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
-  }
-  function goPrev() {
-    const button = document.querySelector(CFG.prevBtn);
-    if (button && !button.disabled) {
-      button.click();
-      return true;
-    }
-    const page = readPage();
-    const select = document.querySelector(CFG.gotoSelect);
-    if (!select || page.qno == null) return false;
-    const prev = page.qno - 1;
-    const option = [...select.options].find(
-      (item) => Number(item.value) === prev
-    );
-    if (!option) return false;
-    select.value = option.value;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
-  }
-  async function waitForPageChange(oldTitle, oldQno) {
-    const start = Date.now();
-    while (Date.now() - start < CFG.pageTimeout) {
-      await sleep(200);
-      const page = readPage();
-      if (!page.title) continue;
-      const titleChanged = normalize(page.title) !== normalize(oldTitle);
-      const qnoChanged = page.qno != null && oldQno != null && page.qno !== oldQno;
-      if (titleChanged || qnoChanged) return true;
-    }
-    return false;
+    return { ok: true, count: options.length };
   }
   function saveAnswers(raw) {
     const data = JSON.parse(raw);
@@ -325,20 +366,6 @@
   }
   function clearAnswers() {
     GM_setValue(KEY_ANSWERS, "");
-  }
-  function getCurrentBankEntry() {
-    const db = getAnswerDB();
-    if (!db) return { ok: false, reason: "未配置有效答案 JSON" };
-    const page = readPage();
-    if (!page.title) return { ok: false, reason: "未读取到题干" };
-    const question = findQuestion(db, page);
-    if (!question) return { ok: false, reason: "答案库中找不到该题干" };
-    return {
-      ok: true,
-      qno: question.qno ?? null,
-      question: question.question,
-      answerTexts: question.answer
-    };
   }
 
   // eccom-helper/src/panel.js
@@ -392,20 +419,24 @@
   function renderBankCard(entry) {
     const card = document.getElementById("as-bank-card");
     if (!card) return;
+    const { index: index2, total } = getPosition();
+    const tag = total ? `题库 ${index2 + 1}/${total}` : "题库";
     if (!entry.ok) {
+      const pageTitle = entry.pageTitle ? `<div class="as-card-question">${escapeHtml(entry.pageTitle)}</div>` : "";
       card.innerHTML = `
       <div class="as-card-head">
-        <span class="as-card-tag">题库</span>
+        <span class="as-card-tag">${tag}</span>
         <span class="as-card-state as-state-miss">未匹配</span>
       </div>
       <div class="as-card-reason">${escapeHtml(entry.reason)}</div>
+      ${pageTitle}
     `;
       return;
     }
     const answers = entry.answerTexts.map((text) => `<li>${escapeHtml(text)}</li>`).join("");
     card.innerHTML = `
     <div class="as-card-head">
-      <span class="as-card-tag">题库</span>
+      <span class="as-card-tag">${tag}</span>
       <span class="as-card-state as-state-hit">${entry.qno != null ? `第 ${entry.qno} 题` : "已匹配"}</span>
     </div>
     <div class="as-card-question">${escapeHtml(entry.question)}</div>
@@ -434,8 +465,11 @@
 
     <div id="as-body">
       <div class="as-actions">
-        <button id="as-prev" type="button">上一题</button>
+        <button id="as-fetch" type="button">获取题目</button>
         <button id="as-solve" class="as-primary" type="button">答题</button>
+      </div>
+      <div class="as-actions">
+        <button id="as-prev" type="button">上一题</button>
         <button id="as-next" type="button">下一题</button>
       </div>
 
@@ -509,6 +543,22 @@
       if (activeMode !== "answer") return;
       renderBankCard(getCurrentBankEntry());
     };
+    const updateNavigation = () => {
+      const { index: index2, total } = getPosition();
+      $("#as-prev").disabled = index2 <= 0;
+      $("#as-next").disabled = index2 < 0 || index2 >= total - 1;
+    };
+    const fetchAndRender = (announce) => {
+      const result = fetchQuestions();
+      updateNavigation();
+      refreshBankCard();
+      if (announce) {
+        setStatus(
+          result.found ? `本页 ${result.found} 题，新增 ${result.added} 题，列表共 ${result.total} 题` : "本页未识别到题目"
+        );
+      }
+      return result;
+    };
     $("#as-toggle-json").onclick = () => setJsonOpen(!jsonOpen);
     $("#as-mode-answer").onclick = () => {
       showMode("answer");
@@ -553,6 +603,7 @@
         setHidden(!hidden);
         if (!hidden) {
           refreshBankCard();
+          updateNavigation();
           updateJsonCount();
         }
       }
@@ -575,26 +626,24 @@
       updateJsonCount();
       refreshBankCard();
     };
+    $("#as-fetch").onclick = () => fetchAndRender(true);
     $("#as-solve").onclick = () => {
-      solveCurrent();
+      const result = solveCurrent();
+      setStatus(result.ok ? `已选 ${result.count} 项` : `未作答：${result.reason}`);
       refreshBankCard();
     };
-    $("#as-prev").onclick = async () => {
-      const before = readPage();
-      if (!goPrev()) {
-        setStatus("没有找到上一题");
-        return;
-      }
-      await waitForPageChange(before.title, before.qno);
+    $("#as-prev").onclick = () => {
+      const item = moveCurrent(-1);
+      if (!item) return;
+      focusItem(item);
+      updateNavigation();
       refreshBankCard();
     };
-    $("#as-next").onclick = async () => {
-      const before = readPage();
-      if (!goNext()) {
-        setStatus("没有找到下一题");
-        return;
-      }
-      await waitForPageChange(before.title, before.qno);
+    $("#as-next").onclick = () => {
+      const item = moveCurrent(1);
+      if (!item) return;
+      focusItem(item);
+      updateNavigation();
       refreshBankCard();
     };
     const saved = getStoredAnswers();
@@ -608,7 +657,15 @@
     setJsonOpen(false);
     setHidden(false);
     showMode("answer");
-    refreshBankCard();
+    const platform = getPlatform();
+    if (platform) {
+      const result = fetchAndRender(false);
+      setStatus(`${platform.name}：识别 ${result.total} 题`);
+    } else {
+      updateNavigation();
+      refreshBankCard();
+      setStatus("当前页面不在支持的平台内");
+    }
   }
 
   // eccom-helper/src/main.js

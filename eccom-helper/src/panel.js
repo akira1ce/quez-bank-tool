@@ -2,12 +2,10 @@ import panelCss from "./panel.css";
 import { setStatus } from "./shared.js";
 import { clickRadiosInCells } from "./page-tools.js";
 import { collectExamResult } from "./exam-result.js";
+import { getPlatform } from "./platforms.js";
+import { fetchQuestions, getPosition, moveCurrent, focusItem } from "./questions.js";
 import {
-  readPage,
   solveCurrent,
-  goNext,
-  goPrev,
-  waitForPageChange,
   saveAnswers,
   getStoredAnswers,
   clearAnswers,
@@ -76,13 +74,21 @@ function renderBankCard(entry) {
   const card = document.getElementById("as-bank-card");
   if (!card) return;
 
+  const { index, total } = getPosition();
+  const tag = total ? `题库 ${index + 1}/${total}` : "题库";
+
   if (!entry.ok) {
+    const pageTitle = entry.pageTitle
+      ? `<div class="as-card-question">${escapeHtml(entry.pageTitle)}</div>`
+      : "";
+
     card.innerHTML = `
       <div class="as-card-head">
-        <span class="as-card-tag">题库</span>
+        <span class="as-card-tag">${tag}</span>
         <span class="as-card-state as-state-miss">未匹配</span>
       </div>
       <div class="as-card-reason">${escapeHtml(entry.reason)}</div>
+      ${pageTitle}
     `;
     return;
   }
@@ -93,7 +99,7 @@ function renderBankCard(entry) {
 
   card.innerHTML = `
     <div class="as-card-head">
-      <span class="as-card-tag">题库</span>
+      <span class="as-card-tag">${tag}</span>
       <span class="as-card-state as-state-hit">${
         entry.qno != null ? `第 ${entry.qno} 题` : "已匹配"
       }</span>
@@ -129,8 +135,11 @@ export function init() {
 
     <div id="as-body">
       <div class="as-actions">
-        <button id="as-prev" type="button">上一题</button>
+        <button id="as-fetch" type="button">获取题目</button>
         <button id="as-solve" class="as-primary" type="button">答题</button>
+      </div>
+      <div class="as-actions">
+        <button id="as-prev" type="button">上一题</button>
         <button id="as-next" type="button">下一题</button>
       </div>
 
@@ -218,6 +227,28 @@ export function init() {
     renderBankCard(getCurrentBankEntry());
   };
 
+  const updateNavigation = () => {
+    const { index, total } = getPosition();
+    $("#as-prev").disabled = index <= 0;
+    $("#as-next").disabled = index < 0 || index >= total - 1;
+  };
+
+  const fetchAndRender = (announce) => {
+    const result = fetchQuestions();
+    updateNavigation();
+    refreshBankCard();
+
+    if (announce) {
+      setStatus(
+        result.found
+          ? `本页 ${result.found} 题，新增 ${result.added} 题，列表共 ${result.total} 题`
+          : "本页未识别到题目",
+      );
+    }
+
+    return result;
+  };
+
   $("#as-toggle-json").onclick = () => setJsonOpen(!jsonOpen);
 
   $("#as-mode-answer").onclick = () => {
@@ -273,6 +304,7 @@ export function init() {
       setHidden(!hidden);
       if (!hidden) {
         refreshBankCard();
+        updateNavigation();
         updateJsonCount();
       }
     }
@@ -298,28 +330,29 @@ export function init() {
     refreshBankCard();
   };
 
+  $("#as-fetch").onclick = () => fetchAndRender(true);
+
   $("#as-solve").onclick = () => {
-    solveCurrent();
+    const result = solveCurrent();
+    setStatus(result.ok ? `已选 ${result.count} 项` : `未作答：${result.reason}`);
     refreshBankCard();
   };
 
-  $("#as-prev").onclick = async () => {
-    const before = readPage();
-    if (!goPrev()) {
-      setStatus("没有找到上一题");
-      return;
-    }
-    await waitForPageChange(before.title, before.qno);
+  $("#as-prev").onclick = () => {
+    const item = moveCurrent(-1);
+    if (!item) return;
+
+    focusItem(item);
+    updateNavigation();
     refreshBankCard();
   };
 
-  $("#as-next").onclick = async () => {
-    const before = readPage();
-    if (!goNext()) {
-      setStatus("没有找到下一题");
-      return;
-    }
-    await waitForPageChange(before.title, before.qno);
+  $("#as-next").onclick = () => {
+    const item = moveCurrent(1);
+    if (!item) return;
+
+    focusItem(item);
+    updateNavigation();
     refreshBankCard();
   };
 
@@ -335,5 +368,14 @@ export function init() {
   setJsonOpen(false);
   setHidden(false);
   showMode("answer");
-  refreshBankCard();
+
+  const platform = getPlatform();
+  if (platform) {
+    const result = fetchAndRender(false);
+    setStatus(`${platform.name}：识别 ${result.total} 题`);
+  } else {
+    updateNavigation();
+    refreshBankCard();
+    setStatus("当前页面不在支持的平台内");
+  }
 }
