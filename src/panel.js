@@ -187,8 +187,10 @@ export function init() {
 
       <div id="as-bank-card" class="as-card"></div>
 
-      <input id="as-search" class="as-search" type="search"
-        placeholder="匹配不上时，搜题库题干关键词" spellcheck="false">
+      <div class="as-search-wrap">
+        <input id="as-search" class="as-search" type="search"
+          placeholder="匹配不上时，搜题库题干关键词" spellcheck="false">
+      </div>
       <div id="as-search-results" class="as-search-results"></div>
 
       <button id="as-toggle-json" class="as-disclosure" type="button">

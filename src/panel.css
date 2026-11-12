@@ -169,10 +169,12 @@
   word-break: break-word;
 }
 
+.as-search-wrap {
+  margin-bottom: 8px;
+}
 .as-search {
   display: block;
   width: 100%;
-  margin-bottom: 8px !important;
   padding: 7px 9px;
   border: 1px solid #d1d5db;
   border-radius: 7px;
