@@ -1,4 +1,3 @@
-import { normalize } from "./shared.js";
 import { getCurrentItem, findDomQuestion } from "./questions.js";
 
 const KEY_ANSWERS = "auto_solver_answers_v6";
@@ -23,12 +22,15 @@ function getAnswerDB() {
 // 题干匹配：全等优先 -> include 兜底
 // ============================================================
 function findQuestion(db, title) {
-  const target = normalize(title);
+  const target = String(title ?? "").trim();
   if (!target) return null;
 
   const entries = db.questions
-    .filter((question) => question.question)
-    .map((question) => ({ question, text: normalize(question.question) }));
+    .map((question) => ({
+      question,
+      text: String(question.question ?? "").trim(),
+    }))
+    .filter(({ text }) => text);
 
   const exact = entries.find(({ text }) => text === target);
   if (exact) return exact.question;
@@ -49,16 +51,17 @@ function matchOptions(answerTexts, pageOptions) {
   const options = [];
 
   for (const answerText of answerTexts) {
-    const target = normalize(answerText);
+    const target = String(answerText ?? "").trim();
+    if (!target) return null;
+
     const pool = pageOptions.filter(
-      (option) => !used.has(option) && !option.disabled && option.normalizedText,
+      (option) => !used.has(option) && !option.disabled && option.text,
     );
 
     const option =
-      pool.find((item) => item.normalizedText === target) ??
+      pool.find((item) => item.text === target) ??
       pool.find(
-        ({ normalizedText }) =>
-          normalizedText.includes(target) || target.includes(normalizedText),
+        ({ text }) => text.includes(target) || target.includes(text),
       );
 
     if (!option) return null;
@@ -94,6 +97,20 @@ export function getCurrentBankEntry() {
     question: question.question,
     answerTexts: question.answer,
   };
+}
+
+export function searchBank(keyword) {
+  const db = getAnswerDB();
+  if (!db) return { ok: false, reason: "未配置有效答案 JSON", items: [] };
+
+  const query = String(keyword ?? "").trim().toLowerCase();
+  if (!query) return { ok: true, total: 0, items: [] };
+
+  const hits = db.questions.filter((question) =>
+    String(question.question ?? "").toLowerCase().includes(query),
+  );
+
+  return { ok: true, total: hits.length, items: hits.slice(0, 20) };
 }
 
 export function solveCurrent() {

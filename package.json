@@ -6,7 +6,7 @@
   "scripts": {
     "convert": "node excel_to_txt.js",
     "build": "node build.mjs",
-    "merge:answers": "node core/merge_answers_json.js"
+    "merge-json": "node core/merge_answers_json.js"
   },
   "keywords": [
     "excel",

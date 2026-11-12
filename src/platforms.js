@@ -1,5 +1,3 @@
-import { normalize } from "./shared.js";
-
 // 统一平台配置：
 // - questionItem：题目容器；null 表示整页只有一道题
 // - question：题干选择器（在 questionItem 或 document 内查找）
@@ -54,7 +52,6 @@ function readOptions(config, scope) {
       {
         input,
         text,
-        normalizedText: normalize(text),
         disabled: input.disabled,
       },
     ];

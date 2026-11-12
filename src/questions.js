@@ -1,4 +1,3 @@
-import { normalize } from "./shared.js";
 import { readPageQuestions } from "./platforms.js";
 
 let items = [];
@@ -9,7 +8,7 @@ export function fetchQuestions() {
   let added = 0;
 
   for (const question of questions) {
-    const key = normalize(question.title);
+    const key = question.title;
     if (!key || items.some((item) => item.key === key)) continue;
 
     items.push({ key, title: question.title, qno: question.qno });
@@ -17,7 +16,7 @@ export function fetchQuestions() {
   }
 
   // 当前项不在本页时（例如页面换了题），切换到本页识别到的第一题
-  const pageKeys = questions.map((question) => normalize(question.title));
+  const pageKeys = questions.map((question) => question.title);
   if (!items[index] || !pageKeys.includes(items[index].key)) {
     const nextIndex = items.findIndex((item) => pageKeys.includes(item.key));
     if (nextIndex >= 0) index = nextIndex;
@@ -46,7 +45,7 @@ export function moveCurrent(delta) {
 // 页面可能重绘或刷新，答题前按题干文本重新定位当前题目
 export function findDomQuestion(key) {
   const { questions } = readPageQuestions();
-  return questions.find((question) => normalize(question.title) === key) ?? null;
+  return questions.find((question) => question.title === key) ?? null;
 }
 
 export function focusItem(item) {

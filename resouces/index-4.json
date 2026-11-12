@@ -1,0 +1,138 @@
+{
+  "questions": [
+    {
+      "qno": 1,
+      "question": "设备指标组下的哪张表会实际存储数据，随意执行变更或删除操作会导致数据丢失?",
+      "answer": ["performance.perf_device_local"]
+    },
+    {
+      "qno": 2,
+      "question": "配置一个设备CPU使用率的指标最适合使用以下哪个数据类型?",
+      "answer": ["FLOAT32"]
+    },
+    {
+      "qno": 3,
+      "question": "以下哪个模型会影响clickhouse的历史数据表名?",
+      "answer": ["指标组"]
+    },
+    {
+      "qno": 4,
+      "question": "可以借由哪个模型实现与监控配置页面将某些指标同时绑定监控并同步修改其时间策略?",
+      "answer": ["监控模板"]
+    },
+    {
+      "qno": 5,
+      "question": "通过以下哪个topic可以获取监控采集的原始数据?",
+      "answer": ["PerfRaw"]
+    },
+    {
+      "qno": 6,
+      "question": "在云网智能运维Agent智能体场景下，关于Tool的本质，下列说法正确的是？",
+      "answer": ["一个Python函数"]
+    },
+    {
+      "qno": 7,
+      "question": "在云网智能运维Agent智能体场景下，Skill的加载时机是？",
+      "answer": ["LLM按需用view_text_file读SKILL.md"]
+    },
+    {
+      "qno": 8,
+      "question": "在云网智能运维Agent智能体场景下，Agent 执行时老是不按预期流程走，优先改什么？",
+      "answer": ["优化 Prompt 和 Skill 的约束"]
+    },
+    {
+      "qno": 9,
+      "question": "在云网智能运维Agent智能体场景下，开发新 Agent 时，最不建议一开始就做什么？",
+      "answer": ["不写 Prompt 和 Skill，先让模型自己猜"]
+    },
+    {
+      "qno": 10,
+      "question": "配置一个设备CPU使用率的指标最适合使用以下哪个数据类型?",
+      "answer": ["FLOAT32"]
+    },
+    {
+      "qno": 11,
+      "question": "以下哪些字段会决定指标组的数据是存储于clickhouse还是elasticsearch?",
+      "answer": ["历史数据源", "数据源变更日期"]
+    },
+    {
+      "qno": 12,
+      "question": "以下哪些方式能找到设备适配的监控指标？",
+      "answer": [
+        "设备 -> 设备型号 -> 厂商 -> 监控关联分组 -> 监控指标",
+        "设备 -> 设备型号 -> 操作系统 -> 监控关联分组 -> 监控指标",
+        "设备 -> 设备型号 -> 监控关联分组 -> 监控指标"
+      ]
+    },
+    {
+      "qno": 13,
+      "question": "采集器分组可以选择以下哪些配置项作为分组条件?",
+      "answer": ["采集频率(时间策略)", "监控源ip"]
+    },
+    {
+      "qno": 14,
+      "question": "在云网智能运维Agent智能体场景下，调试一条 Agent 执行链路时，哪些点需要重点确认？",
+      "answer": [
+        "是否命中正确 Agent",
+        "是否读取到正确 Skill",
+        "Tool 是否已挂载",
+        "Tool 返回是否可读",
+        "系统 Prompt 是否约束了执行边界"
+      ]
+    },
+    {
+      "qno": 15,
+      "question": "以下哪些字段会决定监控指标组的数据是存储于clickhouse还是elasticsearch?",
+      "answer": ["历史数据源", "数据源变更日期"]
+    },
+    {
+      "qno": 16,
+      "question": "以下哪些方式能找到设备适配的监控指标？",
+      "answer": [
+        "设备 -> 设备型号 -> 厂商 -> 监控关联分组 -> 监控指标",
+        "设备 -> 设备型号 -> 操作系统 -> 监控关联分组 -> 监控指标",
+        "设备 -> 设备型号 -> 监控关联分组 -> 监控指标"
+      ]
+    },
+    {
+      "qno": 17,
+      "question": "采集器分组可以选择以下哪些配置项作为分组条件?",
+      "answer": ["采集频率(时间策略)", "监控源ip"]
+    },
+    {
+      "qno": 18,
+      "question": "针对指标组上的\"SNMP是否批量指标\"的调整是实时生效的吗?",
+      "answer": ["否"]
+    },
+    {
+      "qno": 19,
+      "question": "监控配置调整telemetry采集频率会生效吗?",
+      "answer": ["否"]
+    },
+    {
+      "qno": 20,
+      "question": "在云网智能运维Agent智能体场景下，@register_agent(\"xxx\")装饰器的主要作用是把Agent类注册到AgentRegistry单例中，方便后续通过名称查找。",
+      "answer": ["正确"]
+    },
+    {
+      "qno": 21,
+      "question": "在云网智能运维Agent智能体场景下，Tool 里业务流程写得越多，Agent 越稳定？",
+      "answer": ["错误"]
+    },
+    {
+      "qno": 22,
+      "question": "在云网智能运维Agent智能体场景下，Agent 开发时，先跑通一条最小闭环，比一开始覆盖所有分支场景更适合排查问题？",
+      "answer": ["正确"]
+    },
+    {
+      "qno": 23,
+      "question": "针对指标组上的\"SNMP是否批量指标\"的调整是实时生效的吗?",
+      "answer": ["否"]
+    },
+    {
+      "qno": 24,
+      "question": "监控配置调整telemetry采集频率会生效吗?",
+      "answer": ["否"]
+    }
+  ]
+}

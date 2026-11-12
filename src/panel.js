@@ -10,6 +10,7 @@ import {
   getStoredAnswers,
   clearAnswers,
   getCurrentBankEntry,
+  searchBank,
 } from "./answer.js";
 
 function escapeHtml(text) {
@@ -109,6 +110,47 @@ function renderBankCard(entry) {
   `;
 }
 
+function renderSearchResults(keyword) {
+  const wrap = document.getElementById("as-search-results");
+  if (!wrap) return;
+
+  const result = searchBank(keyword);
+
+  if (!keyword.trim()) {
+    wrap.innerHTML = "";
+    return;
+  }
+
+  if (!result.ok) {
+    wrap.innerHTML = `<div class="as-search-note">${escapeHtml(result.reason)}</div>`;
+    return;
+  }
+
+  if (!result.total) {
+    wrap.innerHTML = '<div class="as-search-note">题库里没有匹配的题干</div>';
+    return;
+  }
+
+  const items = result.items
+    .map(
+      (entry) => `
+      <div class="as-search-item">
+        <div class="as-search-question">${escapeHtml(entry.question)}</div>
+        <ul class="as-card-answers">${(entry.answer ?? [])
+          .map((text) => `<li>${escapeHtml(text)}</li>`)
+          .join("")}</ul>
+      </div>`,
+    )
+    .join("");
+
+  const more =
+    result.total > result.items.length
+      ? `<div class="as-search-note">另有 ${result.total - result.items.length} 条未显示</div>`
+      : "";
+
+  wrap.innerHTML = items + more;
+}
+
 function injectStyles() {
   const style = document.createElement("style");
   style.id = "auto-solver-style";
@@ -144,6 +186,10 @@ export function init() {
       </div>
 
       <div id="as-bank-card" class="as-card"></div>
+
+      <input id="as-search" class="as-search" type="search"
+        placeholder="匹配不上时，搜题库题干关键词" spellcheck="false">
+      <div id="as-search-results" class="as-search-results"></div>
 
       <button id="as-toggle-json" class="as-disclosure" type="button">
         <span class="as-caret">▸</span><span class="as-label">答案 JSON</span>
@@ -226,6 +272,8 @@ export function init() {
     if (activeMode !== "answer") return;
     renderBankCard(getCurrentBankEntry());
   };
+
+  const refreshSearch = () => renderSearchResults($("#as-search").value);
 
   const updateNavigation = () => {
     const { index, total } = getPosition();
@@ -316,6 +364,7 @@ export function init() {
       setStatus(`已保存 ${result.count} 道题`);
       updateJsonCount();
       refreshBankCard();
+      refreshSearch();
       setJsonOpen(false);
     } catch (error) {
       setStatus(`保存失败：${error.message}`);
@@ -328,7 +377,10 @@ export function init() {
     setStatus("答案库已清空");
     updateJsonCount();
     refreshBankCard();
+    refreshSearch();
   };
+
+  $("#as-search").oninput = () => refreshSearch();
 
   $("#as-fetch").onclick = () => fetchAndRender(true);
 

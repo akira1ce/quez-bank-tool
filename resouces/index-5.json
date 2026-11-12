@@ -1,0 +1,65 @@
+{
+  "questions": [
+    {
+      "qno": 1,
+      "question": "qiankun子应用必须导出的生命周期函数不包括以下哪个？",
+      "answer": ["render"]
+    },
+    {
+      "qno": 2,
+      "question": "在处理使用 webpack 构建的 qiankun 子应用的动态加载资源路径时，如果因请求路径错误出现 404，通常需要检查子应用的哪个打包配置？",
+      "answer": ["publicPath"]
+    },
+    {
+      "qno": 3,
+      "question": "qiankun 支持的路由模式包括？",
+      "answer": ["Hash 模式和 History 模式"]
+    },
+    {
+      "qno": 4,
+      "question": "当浏览器发起常规页面导航请求时，如果服务器返回了配置完整的 301 或 302 响应，浏览器通常会如何处理？",
+      "answer": ["从响应头的 Location 字段读取重定向地址，发起新请求"]
+    },
+    {
+      "qno": 5,
+      "question": "在浏览器渲染页面的过程中，布局（Layout）阶段紧接着以下哪个阶段进行？",
+      "answer": ["合并构建渲染树（Render Tree）"]
+    },
+    {
+      "qno": 6,
+      "question": "关于 React 中的虚拟 DOM 与 Fiber 协调引擎，以下说法正确的是？",
+      "answer": [
+        "React 16 开始引入 Fiber 引擎，为协调过程的任务拆分与可中断调度提供基础，以降低掉帧风险"
+      ]
+    },
+    {
+      "qno": 7,
+      "question": "在使用 qiankun 微前端框架时，Ant Design 的 Modal 弹窗能够正常显示，但部分样式未生效。以下哪项可能导致该问题？",
+      "answer": [
+        "弹窗挂载位置超出子应用的 CSS 样式隔离范围，导致相关样式无法生效"
+      ]
+    },
+    {
+      "qno": 8,
+      "question": "执行以下代码，控制台的输出顺序是？<br>console.log('A');<br><br>setTimeout(() => {<br>  console.log('B');<br>}, 0);<br><br>Promise.resolve().then(() => {<br>  console.log('C');<br>});<br><br>console.log('D');",
+      "answer": ["A → D → C → B"]
+    },
+    {
+      "qno": 9,
+      "question": "在 React 中，通过 map() 渲染列表时，为每个列表项设置稳定且在同级元素间唯一的 key，其主要作用是什么？",
+      "answer": ["帮助 React 在多次渲染之间识别和匹配对应的列表项"]
+    },
+    {
+      "qno": 10,
+      "question": "关于 CORS 跨域机制与 Nginx 反向代理，以下说法正确的是？",
+      "answer": [
+        "浏览器请求同源的 Nginx 接口时，Nginx 向异源后端转发请求的行为本身不受 CORS 限制"
+      ]
+    },
+    {
+      "qno": 11,
+      "question": "云网平台中，可对可视化仪表盘/大屏/可视化报表资源执行导入、导出操作的模块或菜单是（D）",
+      "answer": ["首页-开发者工具"]
+    }
+  ]
+}
