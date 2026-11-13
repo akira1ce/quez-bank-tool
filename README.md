@@ -21,7 +21,8 @@ quez-bank-tool/
 │   └── quez-bank-tool.js      # 另一平台的 TXT 搜索脚本
 ├── core/                      # 题库处理脚本
 ├── test/                      # 两个平台的本地模拟页
-├── resouces/                  # 收集到的答案 JSON
+├── resouces/                  # 待合并的答案 JSON，合并后自行清空
+├── index.json                 # 聚合后的总题库（脚本生成）
 ├── package.json
 └── README.md
 ```
@@ -98,15 +99,16 @@ npm run build
 
 ```bash
 node core/merge_answers_json.js [源目录] [输出文件]
-# 默认：resouces/ -> resouces/merged-answers.json
+# 默认：resouces/ -> index.json（项目根）
 npm run merge:answers
 ```
 
 规则：
 
+- 已存在的输出文件会作为基准参与合并，可反复合并新增文件
 - 每道题的 `answer` 数组先排序
 - 题干和答案完全一致视为重复，保留首次出现的条目
-- 其余字段（包括 `qno`）原样保留
+- 其余字段原样保留，`qno` 重排为输出顺序的递增序号
 
 ### 表格转答案 JSON
 
@@ -117,6 +119,7 @@ npm run merge:answers
 - `test/mock-exam.html`：华讯结构，一页一题
 - `test/mock-yunxuetang.html`：云学堂结构，整页 20 题
 - `test/mock-answers.json`：两个页面共用的答案库
+- `test/mock-similarity.html`：相似度匹配专项，7 个用例，题库 JSON 内嵌在页面里
 
 步骤：
 
