@@ -263,6 +263,37 @@
       return null;
     }
   }
+  function levenshteinSimilarity(a, b) {
+    const m = a.length;
+    const n = b.length;
+    const dp = Array.from({ length: m + 1 }, (_, i) => [i]);
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,
+          dp[i][j - 1] + 1,
+          dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+        );
+      }
+    }
+    const longest = Math.max(m, n);
+    return longest ? 1 - dp[m][n] / longest : 1;
+  }
+  var SIMILARITY_THRESHOLD = 0.9;
+  var SIMILARITY_MARGIN = 0.05;
+  function pickByText(target, candidates) {
+    const exact = candidates.find((item) => item.text === target);
+    if (exact) return exact;
+    const scored = candidates.map((item) => ({
+      item,
+      score: levenshteinSimilarity(target, item.text)
+    })).sort((a, b) => b.score - a.score);
+    const [best, second] = scored;
+    if (!best || best.score < SIMILARITY_THRESHOLD) return null;
+    if (second && best.score - second.score < SIMILARITY_MARGIN) return null;
+    return best.item;
+  }
   function findQuestion(db, title) {
     const target = String(title ?? "").trim();
     if (!target) return null;
@@ -270,12 +301,7 @@
       question,
       text: String(question.question ?? "").trim()
     })).filter(({ text }) => text);
-    const exact = entries.find(({ text }) => text === target);
-    if (exact) return exact.question;
-    const included = entries.find(
-      ({ text }) => text.includes(target) || target.includes(text)
-    );
-    return included?.question ?? null;
+    return pickByText(target, entries)?.question ?? null;
   }
   function matchOptions(answerTexts, pageOptions) {
     if (!Array.isArray(answerTexts) || !answerTexts.length) return null;
@@ -287,9 +313,7 @@
       const pool = pageOptions.filter(
         (option2) => !used.has(option2) && !option2.disabled && option2.text
       );
-      const option = pool.find((item) => item.text === target) ?? pool.find(
-        ({ text }) => text.includes(target) || target.includes(text)
-      );
+      const option = pickByText(target, pool);
       if (!option) return null;
       used.add(option);
       options.push(option);

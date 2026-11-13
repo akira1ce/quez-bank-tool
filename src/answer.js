@@ -19,8 +19,49 @@ function getAnswerDB() {
 }
 
 // ============================================================
-// 题干匹配：全等优先 -> include 兜底
+// 文本匹配：全等优先 -> 编辑距离相似度兜底
 // ============================================================
+function levenshteinSimilarity(a, b) {
+  const m = a.length;
+  const n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+  }
+
+  const longest = Math.max(m, n);
+  return longest ? 1 - dp[m][n] / longest : 1;
+}
+
+const SIMILARITY_THRESHOLD = 0.9;
+const SIMILARITY_MARGIN = 0.05;
+
+function pickByText(target, candidates) {
+  const exact = candidates.find((item) => item.text === target);
+  if (exact) return exact;
+
+  const scored = candidates
+    .map((item) => ({
+      item,
+      score: levenshteinSimilarity(target, item.text),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const [best, second] = scored;
+  if (!best || best.score < SIMILARITY_THRESHOLD) return null;
+  // 两个候选难分高下时宁可不匹配，避免选错
+  if (second && best.score - second.score < SIMILARITY_MARGIN) return null;
+  return best.item;
+}
+
 function findQuestion(db, title) {
   const target = String(title ?? "").trim();
   if (!target) return null;
@@ -32,18 +73,9 @@ function findQuestion(db, title) {
     }))
     .filter(({ text }) => text);
 
-  const exact = entries.find(({ text }) => text === target);
-  if (exact) return exact.question;
-
-  const included = entries.find(
-    ({ text }) => text.includes(target) || target.includes(text),
-  );
-  return included?.question ?? null;
+  return pickByText(target, entries)?.question ?? null;
 }
 
-// ============================================================
-// 选项匹配：全等优先 -> include 兜底
-// ============================================================
 function matchOptions(answerTexts, pageOptions) {
   if (!Array.isArray(answerTexts) || !answerTexts.length) return null;
 
@@ -57,13 +89,7 @@ function matchOptions(answerTexts, pageOptions) {
     const pool = pageOptions.filter(
       (option) => !used.has(option) && !option.disabled && option.text,
     );
-
-    const option =
-      pool.find((item) => item.text === target) ??
-      pool.find(
-        ({ text }) => text.includes(target) || target.includes(text),
-      );
-
+    const option = pickByText(target, pool);
     if (!option) return null;
 
     used.add(option);
