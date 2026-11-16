@@ -8,6 +8,7 @@ const header = `// ==UserScript==
 // @description  支持华讯/云学堂；手动获取题目、内部切题；题干/答案全等优先，include 兜底
 // @match        *://internal.eccom.com.cn/*
 // @match        *://eccom.yunxuetang.cn/*
+// @noframes
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @run-at       document-idle
