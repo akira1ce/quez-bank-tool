@@ -1,18 +1,20 @@
 // ==UserScript==
 // @name         华讯助手
 // @namespace    http://tampermonkey.net/
-// @version      8.0
-// @description  支持华讯/云学堂；手动获取题目、内部切题；题干/答案全等优先，include 兜底
+// @version      8.1
+// @description  支持华讯/云学堂；题库匹配答题，可问 DeepSeek 兜底；导出答对题 JSON
 // @match        *://internal.eccom.com.cn/*
 // @match        *://eccom.yunxuetang.cn/*
 // @noframes
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_xmlhttpRequest
+// @connect      api.deepseek.com
 // @run-at       document-idle
 // ==/UserScript==
 (() => {
   // src/panel.css
-  var panel_default = '#auto-solver-box {\n  position: fixed;\n  top: 12px;\n  right: 12px;\n  z-index: 999999;\n  width: 320px;\n  background: #ffffff;\n  color: #1f2937;\n  border: 1px solid #e5e7eb;\n  border-radius: 10px;\n  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);\n  padding: 10px;\n  font-family:\n    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  font-size: 13px;\n  line-height: 1.45;\n}\n#auto-solver-box,\n#auto-solver-box * {\n  box-sizing: border-box;\n}\n#auto-solver-box button {\n  all: unset;\n  box-sizing: border-box;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  min-height: 30px;\n  padding: 0 10px;\n  border: 1px solid #d1d5db;\n  border-radius: 7px;\n  background: #ffffff;\n  color: #1f2937;\n  font:\n    500 12.5px/1 -apple-system,\n    BlinkMacSystemFont,\n    "Segoe UI",\n    Roboto,\n    Arial,\n    sans-serif;\n  cursor: pointer;\n  text-align: center;\n  transition:\n    background 0.15s,\n    border-color 0.15s,\n    color 0.15s;\n}\n#auto-solver-box button:hover {\n  background: #f3f4f6;\n}\n#auto-solver-box button:active {\n  background: #e5e7eb;\n}\n#auto-solver-box button.as-primary {\n  background: #2563eb;\n  border-color: #2563eb;\n  color: #ffffff;\n}\n#auto-solver-box button.as-primary:hover {\n  background: #1d4ed8;\n  border-color: #1d4ed8;\n}\n\n.as-topbar {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  margin-bottom: 10px;\n}\n.as-seg {\n  display: inline-flex;\n  padding: 2px;\n  background: #f3f4f6;\n  border-radius: 8px;\n  gap: 2px;\n}\n.as-seg-btn {\n  min-height: 26px !important;\n  padding: 0 14px !important;\n  border: 0 !important;\n  background: transparent !important;\n  color: #6b7280 !important;\n  border-radius: 6px !important;\n  font-weight: 500 !important;\n}\n.as-seg-btn:hover {\n  color: #1f2937 !important;\n}\n.as-seg-btn.is-active {\n  background: #ffffff !important;\n  color: #111827 !important;\n  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);\n}\n.as-hint {\n  font:\n    11px/1 ui-monospace,\n    SFMono-Regular,\n    Menlo,\n    monospace;\n  color: #9ca3af;\n  padding: 3px 6px;\n  border: 1px solid #e5e7eb;\n  border-radius: 5px;\n}\n\n.as-card {\n  border: 1px solid #e5e7eb;\n  border-radius: 8px;\n  padding: 10px 12px;\n  margin-bottom: 10px;\n  background: #fafbfc;\n}\n.as-card-head {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  margin-bottom: 6px;\n}\n.as-card-tag {\n  font-size: 11px;\n  font-weight: 600;\n  color: #6b7280;\n  letter-spacing: 0.04em;\n  text-transform: uppercase;\n}\n.as-card-state {\n  font-size: 11px;\n  font-weight: 600;\n  padding: 2px 8px;\n  border-radius: 999px;\n}\n.as-state-hit {\n  color: #047857;\n  background: #ecfdf5;\n}\n.as-state-miss {\n  color: #b45309;\n  background: #fffbeb;\n}\n.as-card-question {\n  font-size: 13px;\n  color: #111827;\n  margin-bottom: 8px;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n.as-card-answers {\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n.as-card-answers li {\n  font-size: 12.5px;\n  color: #065f46;\n  background: #ecfdf5;\n  border: 1px solid #d1fae5;\n  border-radius: 6px;\n  padding: 5px 8px;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n.as-card-reason {\n  font-size: 12.5px;\n  color: #b45309;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n\n.as-search-wrap {\n  margin-bottom: 8px;\n}\n.as-search {\n  display: block;\n  width: 100%;\n  padding: 7px 9px;\n  border: 1px solid #d1d5db;\n  border-radius: 7px;\n  background: #ffffff;\n  color: #111827;\n  font:\n    12.5px/1.45 -apple-system,\n    BlinkMacSystemFont,\n    "Segoe UI",\n    Roboto,\n    Arial,\n    sans-serif;\n  outline: none;\n}\n.as-search:focus {\n  border-color: #2563eb;\n  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);\n}\n.as-search-results {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  margin-bottom: 10px;\n  max-height: 240px;\n  overflow-y: auto;\n}\n.as-search-results:empty {\n  display: none;\n}\n.as-search-item {\n  border: 1px solid #e5e7eb;\n  border-radius: 8px;\n  padding: 8px 10px;\n  background: #ffffff;\n}\n.as-search-item .as-card-answers {\n  gap: 3px;\n}\n.as-search-question {\n  font-size: 12.5px;\n  color: #111827;\n  margin-bottom: 6px;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n.as-search-note {\n  font-size: 11.5px;\n  color: #9ca3af;\n  padding: 2px 0;\n}\n\n.as-actions {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 6px;\n  margin-bottom: 10px;\n}\n.as-actions button {\n  width: 100%;\n}\n\n.as-disclosure {\n  all: unset;\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  width: 100%;\n  padding: 7px 10px;\n  margin-bottom: 8px;\n  border: 1px dashed #d1d5db;\n  border-radius: 7px;\n  color: #4b5563;\n  font-size: 12.5px;\n  cursor: pointer;\n  background: #ffffff;\n}\n.as-disclosure:hover {\n  background: #f9fafb;\n}\n.as-caret {\n  display: inline-block;\n  width: 12px;\n  color: #9ca3af;\n  transition: transform 0.15s;\n}\n.as-disclosure.is-open .as-caret {\n  transform: rotate(90deg);\n}\n.as-count {\n  margin-left: auto;\n  font-size: 11px;\n  color: #6b7280;\n}\n\n.as-json-wrap {\n  margin-bottom: 10px;\n}\n.as-json-wrap textarea {\n  display: block;\n  width: 100%;\n  height: 120px;\n  min-height: 120px;\n  padding: 8px;\n  border: 1px solid #d1d5db;\n  border-radius: 7px;\n  background: #ffffff;\n  color: #111827;\n  font:\n    12px/1.45 ui-monospace,\n    SFMono-Regular,\n    Menlo,\n    monospace;\n  resize: vertical;\n  outline: none;\n  margin-top: 8px;\n}\n.as-json-wrap textarea:focus {\n  border-color: #2563eb;\n  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);\n}\n.as-json-actions {\n  display: grid;\n  grid-template-columns: repeat(2, 1fr);\n  gap: 6px;\n  margin-top: 6px;\n}\n.as-json-actions button {\n  width: 100%;\n}\n\n.as-status {\n  font-size: 12px;\n  color: #6b7280;\n  min-height: 16px;\n  max-height: 140px;\n  overflow-y: auto;\n  white-space: pre-wrap;\n  word-break: break-word;\n  padding: 6px 8px;\n  background: #f9fafb;\n  border-radius: 6px;\n  border: 1px solid #f3f4f6;\n  margin-top: 8px;\n}\n\n.as-tools-row {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 6px;\n  margin-top: 8px;\n}\n\n.as-tools-note {\n  font-size: 11.5px;\n  color: #9ca3af;\n  margin-top: 6px;\n}\n\n#auto-solver-box button:disabled {\n  opacity: 0.45;\n  cursor: not-allowed;\n}\n#auto-solver-box button:disabled:hover,\n#auto-solver-box button:disabled:active {\n  background: #ffffff;\n}\n\n#as-page-tools button {\n  width: 100%;\n}\n\n@media (max-width: 640px) {\n  #auto-solver-box {\n    width: calc(100vw - 24px);\n    right: 12px;\n    left: 12px;\n  }\n}\n';
+  var panel_default = '#auto-solver-box {\n  position: fixed;\n  top: 12px;\n  right: 12px;\n  z-index: 999999;\n  width: 320px;\n  background: #ffffff;\n  color: #1f2937;\n  border: 1px solid #e5e7eb;\n  border-radius: 10px;\n  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);\n  padding: 10px;\n  font-family:\n    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;\n  font-size: 13px;\n  line-height: 1.45;\n}\n#auto-solver-box,\n#auto-solver-box * {\n  box-sizing: border-box;\n}\n#auto-solver-box button {\n  all: unset;\n  box-sizing: border-box;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  min-height: 30px;\n  padding: 0 10px;\n  border: 1px solid #d1d5db;\n  border-radius: 7px;\n  background: #ffffff;\n  color: #1f2937;\n  font:\n    500 12.5px/1 -apple-system,\n    BlinkMacSystemFont,\n    "Segoe UI",\n    Roboto,\n    Arial,\n    sans-serif;\n  cursor: pointer;\n  text-align: center;\n  transition:\n    background 0.15s,\n    border-color 0.15s,\n    color 0.15s;\n}\n#auto-solver-box button:hover {\n  background: #f3f4f6;\n}\n#auto-solver-box button:active {\n  background: #e5e7eb;\n}\n#auto-solver-box button.as-primary {\n  background: #2563eb;\n  border-color: #2563eb;\n  color: #ffffff;\n}\n#auto-solver-box button.as-primary:hover {\n  background: #1d4ed8;\n  border-color: #1d4ed8;\n}\n\n.as-topbar {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  margin-bottom: 10px;\n}\n.as-seg {\n  display: inline-flex;\n  padding: 2px;\n  background: #f3f4f6;\n  border-radius: 8px;\n  gap: 2px;\n}\n.as-seg-btn {\n  min-height: 26px !important;\n  padding: 0 14px !important;\n  border: 0 !important;\n  background: transparent !important;\n  color: #6b7280 !important;\n  border-radius: 6px !important;\n  font-weight: 500 !important;\n}\n.as-seg-btn:hover {\n  color: #1f2937 !important;\n}\n.as-seg-btn.is-active {\n  background: #ffffff !important;\n  color: #111827 !important;\n  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);\n}\n.as-hint {\n  font:\n    11px/1 ui-monospace,\n    SFMono-Regular,\n    Menlo,\n    monospace;\n  color: #9ca3af;\n  padding: 3px 6px;\n  border: 1px solid #e5e7eb;\n  border-radius: 5px;\n}\n\n.as-card {\n  border: 1px solid #e5e7eb;\n  border-radius: 8px;\n  padding: 10px 12px;\n  margin-bottom: 10px;\n  background: #fafbfc;\n}\n.as-card-head {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  margin-bottom: 6px;\n}\n.as-card-tag {\n  font-size: 11px;\n  font-weight: 600;\n  color: #6b7280;\n  letter-spacing: 0.04em;\n  text-transform: uppercase;\n}\n.as-card-state {\n  font-size: 11px;\n  font-weight: 600;\n  padding: 2px 8px;\n  border-radius: 999px;\n}\n.as-state-hit {\n  color: #047857;\n  background: #ecfdf5;\n}\n.as-state-miss {\n  color: #b45309;\n  background: #fffbeb;\n}\n.as-state-ai {\n  color: #1d4ed8;\n  background: #eff6ff;\n}\n.as-ai-card {\n  border-color: #bfdbfe;\n  background: #f5f9ff;\n}\n.as-card-question {\n  font-size: 13px;\n  color: #111827;\n  margin-bottom: 8px;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n.as-card-answers {\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n.as-card-answers li {\n  font-size: 12.5px;\n  color: #065f46;\n  background: #ecfdf5;\n  border: 1px solid #d1fae5;\n  border-radius: 6px;\n  padding: 5px 8px;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n.as-card-reason {\n  font-size: 12.5px;\n  color: #b45309;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n\n.as-search-wrap {\n  margin-bottom: 8px;\n}\n.as-search {\n  display: block;\n  width: 100%;\n  padding: 7px 9px;\n  border: 1px solid #d1d5db;\n  border-radius: 7px;\n  background: #ffffff;\n  color: #111827;\n  font:\n    12.5px/1.45 -apple-system,\n    BlinkMacSystemFont,\n    "Segoe UI",\n    Roboto,\n    Arial,\n    sans-serif;\n  outline: none;\n}\n.as-search:focus {\n  border-color: #2563eb;\n  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);\n}\n.as-search-results {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  margin-bottom: 10px;\n  max-height: 240px;\n  overflow-y: auto;\n}\n.as-search-results:empty {\n  display: none;\n}\n.as-search-item {\n  border: 1px solid #e5e7eb;\n  border-radius: 8px;\n  padding: 8px 10px;\n  background: #ffffff;\n}\n.as-search-item .as-card-answers {\n  gap: 3px;\n}\n.as-search-question {\n  font-size: 12.5px;\n  color: #111827;\n  margin-bottom: 6px;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n.as-search-note {\n  font-size: 11.5px;\n  color: #9ca3af;\n  padding: 2px 0;\n}\n\n.as-actions {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 6px;\n  margin-bottom: 10px;\n}\n#auto-solver-box button.as-ask-ai {\n  grid-column: span 2;\n}\n.as-actions button {\n  width: 100%;\n}\n\n.as-disclosure {\n  all: unset;\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  width: 100%;\n  padding: 7px 10px;\n  margin-bottom: 8px;\n  border: 1px dashed #d1d5db;\n  border-radius: 7px;\n  color: #4b5563;\n  font-size: 12.5px;\n  cursor: pointer;\n  background: #ffffff;\n}\n.as-disclosure:hover {\n  background: #f9fafb;\n}\n.as-caret {\n  display: inline-block;\n  width: 12px;\n  color: #9ca3af;\n  transition: transform 0.15s;\n}\n.as-disclosure.is-open .as-caret {\n  transform: rotate(90deg);\n}\n.as-count {\n  margin-left: auto;\n  font-size: 11px;\n  color: #6b7280;\n}\n\n.as-json-wrap {\n  margin-bottom: 10px;\n}\n.as-json-wrap textarea {\n  display: block;\n  width: 100%;\n  height: 120px;\n  min-height: 120px;\n  padding: 8px;\n  border: 1px solid #d1d5db;\n  border-radius: 7px;\n  background: #ffffff;\n  color: #111827;\n  font:\n    12px/1.45 ui-monospace,\n    SFMono-Regular,\n    Menlo,\n    monospace;\n  resize: vertical;\n  outline: none;\n  margin-top: 8px;\n}\n.as-json-wrap textarea:focus {\n  border-color: #2563eb;\n  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);\n}\n.as-json-actions {\n  display: grid;\n  grid-template-columns: repeat(2, 1fr);\n  gap: 6px;\n  margin-top: 6px;\n}\n.as-json-actions button {\n  width: 100%;\n}\n\n.as-status {\n  font-size: 12px;\n  color: #6b7280;\n  min-height: 16px;\n  max-height: 140px;\n  overflow-y: auto;\n  white-space: pre-wrap;\n  word-break: break-word;\n  padding: 6px 8px;\n  background: #f9fafb;\n  border-radius: 6px;\n  border: 1px solid #f3f4f6;\n  margin-top: 8px;\n}\n\n.as-key-section {\n  padding-bottom: 10px;\n  margin-bottom: 10px;\n  border-bottom: 1px dashed #e5e7eb;\n}\n.as-key-title {\n  font-size: 12px;\n  font-weight: 600;\n  color: #6b7280;\n  margin-bottom: 6px;\n}\n.as-key-section .as-search {\n  margin-bottom: 6px;\n}\n.as-key-section .as-actions {\n  margin-bottom: 0;\n}\n\n.as-tools-row {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 6px;\n  margin-top: 8px;\n}\n\n.as-tools-note {\n  font-size: 11.5px;\n  color: #9ca3af;\n  margin-top: 6px;\n}\n\n#auto-solver-box button:disabled {\n  opacity: 0.45;\n  cursor: not-allowed;\n}\n#auto-solver-box button:disabled:hover,\n#auto-solver-box button:disabled:active {\n  background: #ffffff;\n}\n\n#as-page-tools button {\n  width: 100%;\n}\n\n@media (max-width: 640px) {\n  #auto-solver-box {\n    width: calc(100vw - 24px);\n    right: 12px;\n    left: 12px;\n  }\n}\n';
 
   // src/shared.js
   function setStatus(message) {
@@ -430,6 +432,137 @@
     GM_setValue(KEY_ANSWERS, "");
   }
 
+  // src/ai.js
+  var KEY_API = "auto_solver_deepseek_key";
+  var API_URL = "https://api.deepseek.com/chat/completions";
+  var MODEL = "deepseek-flash";
+  var TIMEOUT = 3e4;
+  var SYSTEM_PROMPT = `你是一个严格的选择题答题器。用户会给你一道选择题，标注【单选】或【多选】，并给出题干和选项。
+
+必须遵守：
+1. 只输出一个 JSON 数组，元素是正确选项的完整原文，逐字复制，不改写、不概括、不加字母前缀。
+2. 单选只放 1 个元素；多选放全部正确选项，按题目中的选项顺序排列。
+3. 不要输出解释、注释或 markdown 代码块，数组外不要有任何字符。
+4. 如果无法确定答案、题目信息不足或选项残缺，只输出：不会
+5. 严禁猜测或编造答案。
+
+输出示例：
+单选 → ["TCP 是面向连接的协议"]
+多选 → ["选项一完整原文", "选项二完整原文"]
+不确定 → 不会`;
+  function getApiKey() {
+    return String(GM_getValue(KEY_API, "") ?? "").trim();
+  }
+  function setApiKey(key) {
+    GM_setValue(KEY_API, String(key ?? "").trim());
+  }
+  function clearApiKey() {
+    GM_setValue(KEY_API, "");
+  }
+  function buildUserPrompt(title, options, isMulti) {
+    const lines = options.map(
+      (option, index2) => `${String.fromCharCode(65 + index2)}. ${option.text}`
+    );
+    return `【${isMulti ? "多选" : "单选"}】
+题干：${title}
+选项：
+${lines.join("\n")}`;
+  }
+  function parseContent(content, options) {
+    const raw = String(content ?? "").trim();
+    if (!raw) return { ok: false, reason: "AI 没有返回内容" };
+    const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    if (!text.startsWith("[") && /^(不会|不知道|无法确定|不确定)/.test(text)) {
+      return { ok: true, unknown: true, answers: [] };
+    }
+    let list;
+    try {
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) {
+        return { ok: false, reason: "AI 返回格式异常" };
+      }
+      list = parsed;
+    } catch {
+      list = text.split(/\r?\n/);
+    }
+    const answers = [];
+    for (const entry of list) {
+      let value = String(entry ?? "").replace(/^\s*[-*•]\s*/, "").replace(/^\d+[.、)]\s*/, "").replace(/^[A-Z][.、)]\s*/i, "").trim();
+      if (!value) continue;
+      const letters = value.replace(/[\s,，、]+/g, "");
+      const isOptionText = options.some((option) => option.text === value);
+      if (!isOptionText && /^[A-Z]+$/.test(letters)) {
+        const mapped = [...letters].map(
+          (letter) => options[letter.charCodeAt(0) - 65]?.text
+        );
+        if (mapped.every(Boolean)) {
+          for (const answerText of mapped) {
+            if (!answers.includes(answerText)) answers.push(answerText);
+          }
+          continue;
+        }
+      }
+      if (!answers.includes(value)) answers.push(value);
+    }
+    if (!answers.length) return { ok: false, reason: "AI 返回无法识别" };
+    return { ok: true, unknown: false, answers };
+  }
+  function askDeepSeek({ title, options }) {
+    const key = getApiKey();
+    if (!key) {
+      return Promise.resolve({ ok: false, needKey: true, reason: "未配置 API Key" });
+    }
+    const usable = options.filter((option) => option.text);
+    if (!usable.length) {
+      return Promise.resolve({ ok: false, reason: "页面没有可用的选项" });
+    }
+    const isMulti = usable.some((option) => option.input?.type === "checkbox");
+    const payload = {
+      model: MODEL,
+      stream: false,
+      temperature: 0,
+      max_tokens: 256,
+      thinking: { type: "disabled" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildUserPrompt(title, usable, isMulti) }
+      ]
+    };
+    return new Promise((resolve) => {
+      GM_xmlhttpRequest({
+        method: "POST",
+        url: API_URL,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`
+        },
+        data: JSON.stringify(payload),
+        timeout: TIMEOUT,
+        onload(response) {
+          let data;
+          try {
+            data = JSON.parse(response.responseText);
+          } catch {
+            resolve({ ok: false, reason: `响应解析失败（HTTP ${response.status}）` });
+            return;
+          }
+          if (response.status !== 200) {
+            const message = data?.error?.message ? `：${data.error.message}` : "";
+            resolve({
+              ok: false,
+              reason: `请求失败（HTTP ${response.status}）${message}`
+            });
+            return;
+          }
+          const content = data?.choices?.[0]?.message?.content ?? "";
+          resolve({ ...parseContent(content, usable), isMulti });
+        },
+        onerror: () => resolve({ ok: false, reason: "网络请求失败" }),
+        ontimeout: () => resolve({ ok: false, reason: "请求超时" })
+      });
+    });
+  }
+
   // src/panel.js
   function escapeHtml(text) {
     return String(text ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -505,6 +638,37 @@
     <div class="as-card-answers">${answers}</div>
   `;
   }
+  function renderAiCard(result) {
+    const card = document.getElementById("as-ai-card");
+    if (!card) return;
+    const type = result.isMulti ? "多选" : "单选";
+    if (result.unknown) {
+      card.innerHTML = `
+      <div class="as-card-head">
+        <span class="as-card-tag">AI · ${type}</span>
+        <span class="as-card-state as-state-miss">不会</span>
+      </div>
+      <div class="as-card-reason">AI 无法确定答案，未给出选项</div>
+    `;
+      card.style.display = "block";
+      return;
+    }
+    const answers = result.answers.map((text) => `<li>${escapeHtml(text)}</li>`).join("");
+    card.innerHTML = `
+    <div class="as-card-head">
+      <span class="as-card-tag">AI · ${type}</span>
+      <span class="as-card-state as-state-ai">答案</span>
+    </div>
+    <ul class="as-card-answers">${answers}</ul>
+  `;
+    card.style.display = "block";
+  }
+  function clearAiCard() {
+    const card = document.getElementById("as-ai-card");
+    if (!card) return;
+    card.style.display = "none";
+    card.innerHTML = "";
+  }
   function renderSearchResults(keyword) {
     const wrap = document.getElementById("as-search-results");
     if (!wrap) return;
@@ -555,13 +719,13 @@
       <div class="as-actions">
         <button id="as-fetch" type="button">获取题目</button>
         <button id="as-solve" class="as-primary" type="button">答题</button>
-      </div>
-      <div class="as-actions">
+        <button id="as-ask-ai" class="as-ask-ai" type="button">问 AI</button>
         <button id="as-prev" type="button">上一题</button>
         <button id="as-next" type="button">下一题</button>
       </div>
 
       <div id="as-bank-card" class="as-card"></div>
+      <div id="as-ai-card" class="as-card as-ai-card" style="display:none"></div>
 
       <div class="as-search-wrap">
         <input id="as-search" class="as-search" type="search"
@@ -585,6 +749,16 @@
     </div>
 
     <div id="as-page-tools" style="display:none">
+      <div class="as-key-section">
+        <div class="as-key-title">DeepSeek API Key</div>
+        <input id="as-api-key" class="as-search" type="password" placeholder="sk-..."
+          autocomplete="off" spellcheck="false">
+        <div class="as-actions">
+          <button id="as-save-key" type="button">保存 Key</button>
+          <button id="as-clear-key" type="button">清除 Key</button>
+        </div>
+        <div id="as-key-state" class="as-tools-note">未配置</div>
+      </div>
       <button id="as-restart-watch" type="button">开启继续学习检测</button>
       <button id="as-select-radios" type="button" style="margin-top:8px">全选当前页面单选项</button>
       <button id="as-fetch-exam" type="button" style="margin-top:8px">
@@ -627,6 +801,9 @@
       const saved2 = getStoredAnswers();
       $("#as-json-count").textContent = saved2.raw ? saved2.invalid ? "格式异常" : `${saved2.count} 题` : "未配置";
     };
+    const updateKeyState = () => {
+      $("#as-key-state").textContent = getApiKey() ? "已配置" : "未配置";
+    };
     const showMode = (mode) => {
       activeMode = mode;
       const answerMode = mode === "answer";
@@ -649,6 +826,7 @@
       const result = fetchQuestions();
       updateNavigation();
       refreshBankCard();
+      clearAiCard();
       if (announce) {
         setStatus(
           result.found ? `本页 ${result.found} 题，新增 ${result.added} 题，列表共 ${result.total} 题` : "本页未识别到题目"
@@ -665,6 +843,23 @@
     $("#as-select-radios").onclick = () => {
       const count = clickRadiosInCells();
       setStatus(`已点击 ${count} 个单选项`);
+    };
+    $("#as-save-key").onclick = () => {
+      const value = $("#as-api-key").value.trim();
+      if (!value) {
+        setStatus("请输入 API Key");
+        return;
+      }
+      setApiKey(value);
+      $("#as-api-key").value = "";
+      updateKeyState();
+      setStatus("API Key 已保存");
+    };
+    $("#as-clear-key").onclick = () => {
+      clearApiKey();
+      $("#as-api-key").value = "";
+      updateKeyState();
+      setStatus("API Key 已清除");
     };
     $("#as-restart-watch").onclick = () => {
       const on = !isRestartWatching();
@@ -740,12 +935,53 @@
       setStatus(result.ok ? `已选 ${result.count} 项` : `未作答：${result.reason}`);
       refreshBankCard();
     };
+    $("#as-ask-ai").onclick = () => {
+      const item = getCurrentItem();
+      if (!item) {
+        setStatus("请先点击「获取题目」");
+        return;
+      }
+      const dom = findDomQuestion(item.key);
+      if (!dom) {
+        setStatus("页面已刷新，请重新获取题目");
+        return;
+      }
+      if (!dom.options.length) {
+        setStatus("页面没有可用的选项");
+        return;
+      }
+      if (!getApiKey()) {
+        setStatus("未配置 API Key，请在「工具」里填写");
+        showMode("page");
+        $("#as-api-key").focus();
+        return;
+      }
+      const button = $("#as-ask-ai");
+      button.disabled = true;
+      button.textContent = "查询中…";
+      clearAiCard();
+      setStatus("正在问 AI…");
+      askDeepSeek({ title: dom.title, options: dom.options }).then((result) => {
+        if (!result.ok) {
+          setStatus(`问 AI 失败：${result.reason}`);
+          return;
+        }
+        renderAiCard(result);
+        setStatus(
+          result.unknown ? "AI 无法确定答案" : `AI 给出 ${result.answers.length} 个答案`
+        );
+      }).finally(() => {
+        button.disabled = false;
+        button.textContent = "问 AI";
+      });
+    };
     $("#as-prev").onclick = () => {
       const item = moveCurrent(-1);
       if (!item) return;
       focusItem(item);
       updateNavigation();
       refreshBankCard();
+      clearAiCard();
     };
     $("#as-next").onclick = () => {
       const item = moveCurrent(1);
@@ -753,6 +989,7 @@
       focusItem(item);
       updateNavigation();
       refreshBankCard();
+      clearAiCard();
     };
     const saved = getStoredAnswers();
     if (saved.raw) {
@@ -762,6 +999,7 @@
       );
     }
     updateJsonCount();
+    updateKeyState();
     setJsonOpen(false);
     setHidden(false);
     showMode("answer");

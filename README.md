@@ -12,6 +12,7 @@ quez-bank-tool/
 │   ├── platforms.js           # 平台选择器配置
 │   ├── questions.js           # 内部题目列表
 │   ├── answer.js              # 题干/选项匹配、答题、答案库存储
+│   ├── ai.js                  # 问 DeepSeek：请求、提示词、答案解析、Key 存取
 │   ├── page-tools.js          # 工具页：全选单选项
 │   └── exam-result.js         # 考试结果页 -> 答对题 JSON
 ├── build.mjs                  # esbuild 打包，产物 scripts/eccom-helper.js
@@ -59,14 +60,27 @@ npm run build
 - 「获取题目」扫描当前页面并追加到内部列表，按题干去重；页面换题后再点一次
 - 「上一题 / 下一题」只切换内部列表并滚动到对应题目，不点击页面按钮；华讯只有一题，这两个按钮保持禁用
 - 「答题」按当前内部题目匹配答案并勾选；多选会先清掉不在答案里的已选项
+- 「问 AI」把当前题干和页面选项发给 DeepSeek，只显示答案原文，不自动勾选；AI 不确定时显示「不会」
 - 卡片显示当前题目的匹配结果；未匹配时显示原因和页面题干
 - 卡片下方的搜索框可按关键词搜题库题干，匹配不上时用它查标准答案
 - 「答案 JSON」展开后可粘贴答案库并保存
 
 **工具**：
 
+- 填写 / 清除 DeepSeek API Key（保存在脚本存储里，模型固定 `deepseek-flash`）
 - 全选当前页面单选项
 - 获取本页答对题 JSON，然后复制或下载
+
+### 问 AI（DeepSeek 兜底）
+
+题库匹配不上时，点「问 AI」把当前题干和选项发给 DeepSeek：
+
+- 非流式请求，模型 `deepseek-flash`，关闭思考模式
+- 题型按页面选项类型判断：`radio` 为单选，含 `checkbox` 为多选
+- 只返回答案原文，不要解释；AI 不确定时返回「不会」，不会瞎蒙
+- 结果只展示在 AI 卡片里，不自动勾选页面
+- 跨域走 `GM_xmlhttpRequest`，需要 `@connect api.deepseek.com`
+- API Key 在「工具」里填写，存在 Tampermonkey 脚本存储中
 
 ### 匹配规则
 

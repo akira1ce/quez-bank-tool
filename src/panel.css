@@ -137,6 +137,14 @@
   color: #b45309;
   background: #fffbeb;
 }
+.as-state-ai {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+.as-ai-card {
+  border-color: #bfdbfe;
+  background: #f5f9ff;
+}
 .as-card-question {
   font-size: 13px;
   color: #111827;
@@ -232,6 +240,9 @@
   gap: 6px;
   margin-bottom: 10px;
 }
+#auto-solver-box button.as-ask-ai {
+  grid-column: span 2;
+}
 .as-actions button {
   width: 100%;
 }
@@ -319,6 +330,24 @@
   border-radius: 6px;
   border: 1px solid #f3f4f6;
   margin-top: 8px;
+}
+
+.as-key-section {
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed #e5e7eb;
+}
+.as-key-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+.as-key-section .as-search {
+  margin-bottom: 6px;
+}
+.as-key-section .as-actions {
+  margin-bottom: 0;
 }
 
 .as-tools-row {

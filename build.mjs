@@ -4,13 +4,15 @@ import { build } from "esbuild";
 const header = `// ==UserScript==
 // @name         华讯助手
 // @namespace    http://tampermonkey.net/
-// @version      8.0
-// @description  支持华讯/云学堂；手动获取题目、内部切题；题干/答案全等优先，include 兜底
+// @version      8.1
+// @description  支持华讯/云学堂；题库匹配答题，可问 DeepSeek 兜底；导出答对题 JSON
 // @match        *://internal.eccom.com.cn/*
 // @match        *://eccom.yunxuetang.cn/*
 // @noframes
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_xmlhttpRequest
+// @connect      api.deepseek.com
 // @run-at       document-idle
 // ==/UserScript==`;
 
