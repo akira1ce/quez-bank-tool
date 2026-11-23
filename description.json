@@ -1,0 +1,177 @@
+{
+  "name": "eccom-tools",
+  "version": "8.1",
+  "summary": "考试题库匹配答题的 Tampermonkey 用户脚本，支持 eccom 和云学堂；题库匹配不上时可问 DeepSeek，并支持从考试结果页导出答对题 JSON。",
+  "entry": "scripts/eccom-helper.js",
+  "togglePanel": "`",
+  "modes": ["答题", "工具"],
+  "platforms": [
+    {
+      "id": "eccom",
+      "name": "eccom",
+      "host": "internal.eccom.com.cn",
+      "layout": "一页一题，翻页后整页刷新，每次换题需重新点「获取题目」",
+      "selectors": {
+        "questionItem": null,
+        "question": "#ecmc_body_content div > b",
+        "qno": "#QNo",
+        "options": {
+          "item": "#frmAnswer table tr",
+          "input": "input[name=\"Answer\"]",
+          "text": "td:last-child"
+        }
+      }
+    },
+    {
+      "id": "yunxuetang",
+      "name": "云学堂",
+      "host": "eccom.yunxuetang.cn",
+      "layout": "整页多题，点一次「获取题目」即可全部获取",
+      "selectors": {
+        "questionItem": "li[name=\"li_Question\"]",
+        "question": ".col-18 > div[style*=\"overflow\"]",
+        "qno": null,
+        "options": {
+          "item": "label",
+          "input": "input[type=\"radio\"], input[type=\"checkbox\"]",
+          "text": null,
+          "note": "文本取选项容器的 innerText；选择器为占位默认值，需按真实 DOM 校准"
+        }
+      }
+    }
+  ],
+  "features": [
+    {
+      "name": "获取题目",
+      "tab": "答题",
+      "description": "扫描当前页面题目，按题干去重后追加到内部列表"
+    },
+    {
+      "name": "答题",
+      "tab": "答题",
+      "description": "按当前题目匹配答案并勾选选项；多选题先取消不在答案里的已选项；任一答案匹配不上则整题不勾选"
+    },
+    {
+      "name": "问 AI",
+      "tab": "答题",
+      "description": "把当前题干和选项发给 DeepSeek，只展示答案原文，不自动勾选；AI 不确定时显示「不会」"
+    },
+    {
+      "name": "上一题 / 下一题",
+      "tab": "答题",
+      "description": "只在已获取的题目列表内切换并滚动到对应题目，不点击页面自身翻页按钮"
+    },
+    {
+      "name": "题库卡片",
+      "tab": "答题",
+      "description": "显示当前题干在题库里的匹配结果；未匹配时显示原因和页面题干"
+    },
+    {
+      "name": "题库搜索",
+      "tab": "答题",
+      "description": "按关键词检索题库题干，最多显示 20 条，用于匹配不上时人工核对"
+    },
+    {
+      "name": "答案 JSON 配置",
+      "tab": "答题",
+      "description": "展开后粘贴答案库并保存，保存在 Tampermonkey 脚本存储中"
+    },
+    {
+      "name": "显示 / 隐藏面板",
+      "tab": "全局",
+      "description": "按反引号切换面板显示；@noframes 保证 iframe 内不重复注入"
+    }
+  ],
+  "tools": [
+    {
+      "name": "DeepSeek API Key",
+      "description": "填写、保存或清除 API Key；存在 Tampermonkey 脚本存储中，模型固定 deepseek-flash"
+    },
+    {
+      "name": "开启继续学习检测",
+      "description": "每 30 秒检查一次 #reStartStudy，出现即点击；再次点击停止检测"
+    },
+    {
+      "name": "全选当前页面单选项",
+      "description": "逐个点击每个 td 中的单选框，用于结果页批量勾选"
+    },
+    {
+      "name": "获取本页答对题 JSON",
+      "description": "在考试结果页提取得分等于满分的题目，只保留能解析出题干和选项的题目"
+    },
+    {
+      "name": "复制 / 下载",
+      "description": "复制或下载上一步导出的答对题 JSON；下载文件名带时间戳"
+    }
+  ],
+  "dataFormat": {
+    "name": "答案库 JSON",
+    "storageKey": "auto_solver_answers_v6",
+    "schema": {
+      "questions": [
+        {
+          "qno": "可选，整数题号，不参与匹配",
+          "question": "题干原文，字符串",
+          "answer": "正确选项的完整文本数组；单选 1 个，多选多个"
+        }
+      ]
+    },
+    "example": {
+      "questions": [
+        {
+          "qno": 1,
+          "question": "TCP 的特点是？",
+          "answer": ["TCP 是面向连接的协议"]
+        }
+      ]
+    },
+    "rules": [
+      "answer 必须是选项完整文本，不支持 A/B/C/D 字母",
+      "题干和选项只做 trim，不做大小写、空白、标点、全半角归一化",
+      "保存时校验 questions 数组和每题 answer 数组，格式错误不覆盖旧数据"
+    ]
+  },
+  "ai": {
+    "provider": "DeepSeek",
+    "endpoint": "https://api.deepseek.com/chat/completions",
+    "model": "deepseek-flash",
+    "stream": false,
+    "thinking": "disabled",
+    "temperature": 0,
+    "maxTokens": 256,
+    "typeDetection": "选项含 checkbox 为多选，否则单选",
+    "output": "正确选项的完整原文；无法确定时只返回「不会」",
+    "autoSelect": false,
+    "keyStorage": "auto_solver_deepseek_key",
+    "notes": [
+      "请求通过 GM_xmlhttpRequest 发出，需要 @connect api.deepseek.com",
+      "返回会按页面选项校验，模型漏回字母时按 A/B/C 还原成选项原文",
+      "返回「不会」或格式非法时不展示选项，避免瞎蒙"
+    ]
+  },
+  "matching": {
+    "normalization": "仅 trim",
+    "question": "全等优先，否则 Levenshtein 相似度 ≥ 0.9 且领先第二名 ≥ 0.05",
+    "options": "与题干同一套相似度规则，按答案文本逐项匹配",
+    "atomicity": "任一答案匹配不上则整题不勾选",
+    "knownLimits": [
+      "数字或否定词变化可能误判",
+      "差异超过约 10% 的文本匹配不上，短文本更明显",
+      "题库存在近似重复题干时会判定歧义并放弃匹配"
+    ]
+  },
+  "build": {
+    "install": "npm install",
+    "command": "npm run build",
+    "output": "scripts/eccom-helper.js",
+    "permissions": ["GM_setValue", "GM_getValue", "GM_xmlhttpRequest"],
+    "connect": ["api.deepseek.com"],
+    "noFrames": true,
+    "note": "修改 src 后需重新构建；元数据或脚本名变化时建议在 Tampermonkey 中重装"
+  },
+  "distribution": {
+    "github": "https://github.com/akira1ce/quez-bank-tool",
+    "syncSource": "https://raw.githubusercontent.com/akira1ce/quez-bank-tool/main/scripts/eccom-helper.js",
+    "note": "GreasyFork 建好脚本后用「从 URL 同步」填入 syncSource，可选配 GitHub webhook 实现自动同步"
+  }
+}

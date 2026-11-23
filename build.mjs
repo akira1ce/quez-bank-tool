@@ -6,6 +6,7 @@ const header = `// ==UserScript==
 // @namespace    http://tampermonkey.net/
 // @version      8.1
 // @description  支持 eccom/云学堂；题库匹配答题，可问 DeepSeek 兜底；导出答对题 JSON
+// @license      MIT
 // @match        *://internal.eccom.com.cn/*
 // @match        *://eccom.yunxuetang.cn/*
 // @noframes
