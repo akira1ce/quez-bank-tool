@@ -27,6 +27,33 @@
     radios.forEach((radio) => radio.click());
     return radios.length;
   }
+  var RESTART_INTERVAL = 3e4;
+  var restartTimer = null;
+  function clickRestartStudy() {
+    const button = document.getElementById("reStartStudy");
+    if (!button) return false;
+    button.dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true })
+    );
+    button.click();
+    return true;
+  }
+  function isRestartWatching() {
+    return restartTimer !== null;
+  }
+  function setRestartWatching(on, onClick) {
+    if (on === isRestartWatching()) return;
+    if (!on) {
+      clearInterval(restartTimer);
+      restartTimer = null;
+      return;
+    }
+    const tick = () => {
+      if (clickRestartStudy()) onClick?.();
+    };
+    tick();
+    restartTimer = setInterval(tick, RESTART_INTERVAL);
+  }
 
   // src/exam-result.js
   var TABLE_SELECTOR = "table.table-dataList.table-grid, table.table-dataList";
@@ -558,7 +585,8 @@
     </div>
 
     <div id="as-page-tools" style="display:none">
-      <button id="as-select-radios" type="button">全选当前页面单选项</button>
+      <button id="as-restart-watch" type="button">开启继续学习检测</button>
+      <button id="as-select-radios" type="button" style="margin-top:8px">全选当前页面单选项</button>
       <button id="as-fetch-exam" type="button" style="margin-top:8px">
         获取本页答对题 JSON
       </button>
@@ -568,7 +596,8 @@
       </div>
       <div class="as-tools-note">
         逐个点击每个 td 中的单选框。<br>
-        先获取本页答对题 JSON，再复制或下载。
+        先获取本页答对题 JSON，再复制或下载。<br>
+        继续学习检测：每 30 秒查一次 #reStartStudy，出现即点击。
       </div>
     </div>
 
@@ -636,6 +665,14 @@
     $("#as-select-radios").onclick = () => {
       const count = clickRadiosInCells();
       setStatus(`已点击 ${count} 个单选项`);
+    };
+    $("#as-restart-watch").onclick = () => {
+      const on = !isRestartWatching();
+      const button = $("#as-restart-watch");
+      setStatus(on ? "已开启继续学习检测（每 30 秒）" : "已关闭继续学习检测");
+      setRestartWatching(on, () => setStatus("已点击「继续学习」"));
+      button.textContent = on ? "停止继续学习检测" : "开启继续学习检测";
+      button.classList.toggle("as-primary", on);
     };
     $("#as-fetch-exam").onclick = () => {
       const built = buildExamJson();
