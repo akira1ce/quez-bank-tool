@@ -3,7 +3,14 @@ import { setStatus } from "./shared.js";
 import { clickRadiosInCells, isRestartWatching, setRestartWatching } from "./page-tools.js";
 import { collectExamResult } from "./exam-result.js";
 import { getPlatform } from "./platforms.js";
-import { fetchQuestions, getPosition, moveCurrent, focusItem } from "./questions.js";
+import {
+  fetchQuestions,
+  getPosition,
+  getCurrentItem,
+  moveCurrent,
+  focusItem,
+  findDomQuestion,
+} from "./questions.js";
 import {
   solveCurrent,
   saveAnswers,
@@ -12,6 +19,12 @@ import {
   getCurrentBankEntry,
   searchBank,
 } from "./answer.js";
+import {
+  askDeepSeek,
+  getApiKey,
+  setApiKey,
+  clearApiKey,
+} from "./ai.js";
 
 function escapeHtml(text) {
   return String(text ?? "")
@@ -110,6 +123,46 @@ function renderBankCard(entry) {
   `;
 }
 
+function renderAiCard(result) {
+  const card = document.getElementById("as-ai-card");
+  if (!card) return;
+
+  const type = result.isMulti ? "多选" : "单选";
+
+  if (result.unknown) {
+    card.innerHTML = `
+      <div class="as-card-head">
+        <span class="as-card-tag">AI · ${type}</span>
+        <span class="as-card-state as-state-miss">不会</span>
+      </div>
+      <div class="as-card-reason">AI 无法确定答案，未给出选项</div>
+    `;
+    card.style.display = "block";
+    return;
+  }
+
+  const answers = result.answers
+    .map((text) => `<li>${escapeHtml(text)}</li>`)
+    .join("");
+
+  card.innerHTML = `
+    <div class="as-card-head">
+      <span class="as-card-tag">AI · ${type}</span>
+      <span class="as-card-state as-state-ai">答案</span>
+    </div>
+    <ul class="as-card-answers">${answers}</ul>
+  `;
+  card.style.display = "block";
+}
+
+function clearAiCard() {
+  const card = document.getElementById("as-ai-card");
+  if (!card) return;
+
+  card.style.display = "none";
+  card.innerHTML = "";
+}
+
 function renderSearchResults(keyword) {
   const wrap = document.getElementById("as-search-results");
   if (!wrap) return;
@@ -179,13 +232,13 @@ export function init() {
       <div class="as-actions">
         <button id="as-fetch" type="button">获取题目</button>
         <button id="as-solve" class="as-primary" type="button">答题</button>
-      </div>
-      <div class="as-actions">
+        <button id="as-ask-ai" class="as-ask-ai" type="button">问 AI</button>
         <button id="as-prev" type="button">上一题</button>
         <button id="as-next" type="button">下一题</button>
       </div>
 
       <div id="as-bank-card" class="as-card"></div>
+      <div id="as-ai-card" class="as-card as-ai-card" style="display:none"></div>
 
       <div class="as-search-wrap">
         <input id="as-search" class="as-search" type="search"
@@ -209,6 +262,16 @@ export function init() {
     </div>
 
     <div id="as-page-tools" style="display:none">
+      <div class="as-key-section">
+        <div class="as-key-title">DeepSeek API Key</div>
+        <input id="as-api-key" class="as-search" type="password" placeholder="sk-..."
+          autocomplete="off" spellcheck="false">
+        <div class="as-actions">
+          <button id="as-save-key" type="button">保存 Key</button>
+          <button id="as-clear-key" type="button">清除 Key</button>
+        </div>
+        <div id="as-key-state" class="as-tools-note">未配置</div>
+      </div>
       <button id="as-restart-watch" type="button">开启继续学习检测</button>
       <button id="as-select-radios" type="button" style="margin-top:8px">全选当前页面单选项</button>
       <button id="as-fetch-exam" type="button" style="margin-top:8px">
@@ -263,6 +326,10 @@ export function init() {
       : "未配置";
   };
 
+  const updateKeyState = () => {
+    $("#as-key-state").textContent = getApiKey() ? "已配置" : "未配置";
+  };
+
   const showMode = (mode) => {
     activeMode = mode;
     const answerMode = mode === "answer";
@@ -289,6 +356,7 @@ export function init() {
     const result = fetchQuestions();
     updateNavigation();
     refreshBankCard();
+    clearAiCard();
 
     if (announce) {
       setStatus(
@@ -312,6 +380,26 @@ export function init() {
   $("#as-select-radios").onclick = () => {
     const count = clickRadiosInCells();
     setStatus(`已点击 ${count} 个单选项`);
+  };
+
+  $("#as-save-key").onclick = () => {
+    const value = $("#as-api-key").value.trim();
+    if (!value) {
+      setStatus("请输入 API Key");
+      return;
+    }
+
+    setApiKey(value);
+    $("#as-api-key").value = "";
+    updateKeyState();
+    setStatus("API Key 已保存");
+  };
+
+  $("#as-clear-key").onclick = () => {
+    clearApiKey();
+    $("#as-api-key").value = "";
+    updateKeyState();
+    setStatus("API Key 已清除");
   };
 
   $("#as-restart-watch").onclick = () => {
@@ -404,6 +492,55 @@ export function init() {
     refreshBankCard();
   };
 
+  $("#as-ask-ai").onclick = () => {
+    const item = getCurrentItem();
+    if (!item) {
+      setStatus("请先点击「获取题目」");
+      return;
+    }
+
+    const dom = findDomQuestion(item.key);
+    if (!dom) {
+      setStatus("页面已刷新，请重新获取题目");
+      return;
+    }
+    if (!dom.options.length) {
+      setStatus("页面没有可用的选项");
+      return;
+    }
+    if (!getApiKey()) {
+      setStatus("未配置 API Key，请在「工具」里填写");
+      showMode("page");
+      $("#as-api-key").focus();
+      return;
+    }
+
+    const button = $("#as-ask-ai");
+    button.disabled = true;
+    button.textContent = "查询中…";
+    clearAiCard();
+    setStatus("正在问 AI…");
+
+    askDeepSeek({ title: dom.title, options: dom.options })
+      .then((result) => {
+        if (!result.ok) {
+          setStatus(`问 AI 失败：${result.reason}`);
+          return;
+        }
+
+        renderAiCard(result);
+        setStatus(
+          result.unknown
+            ? "AI 无法确定答案"
+            : `AI 给出 ${result.answers.length} 个答案`,
+        );
+      })
+      .finally(() => {
+        button.disabled = false;
+        button.textContent = "问 AI";
+      });
+  };
+
   $("#as-prev").onclick = () => {
     const item = moveCurrent(-1);
     if (!item) return;
@@ -411,6 +548,7 @@ export function init() {
     focusItem(item);
     updateNavigation();
     refreshBankCard();
+    clearAiCard();
   };
 
   $("#as-next").onclick = () => {
@@ -420,6 +558,7 @@ export function init() {
     focusItem(item);
     updateNavigation();
     refreshBankCard();
+    clearAiCard();
   };
 
   const saved = getStoredAnswers();
@@ -430,6 +569,7 @@ export function init() {
     );
   }
   updateJsonCount();
+  updateKeyState();
 
   setJsonOpen(false);
   setHidden(false);
