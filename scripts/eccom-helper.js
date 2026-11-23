@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         华讯助手
+// @name         eccom-tools
 // @namespace    http://tampermonkey.net/
 // @version      8.1
-// @description  支持华讯/云学堂；题库匹配答题，可问 DeepSeek 兜底；导出答对题 JSON
+// @description  支持 eccom/云学堂；题库匹配答题，可问 DeepSeek 兜底；导出答对题 JSON
 // @match        *://internal.eccom.com.cn/*
 // @match        *://eccom.yunxuetang.cn/*
 // @noframes
@@ -20,7 +20,7 @@
   function setStatus(message) {
     const el = document.getElementById("as-status");
     if (el) el.textContent = message;
-    console.log("[华讯助手]", message);
+    console.log("[eccom-tools]", message);
   }
 
   // src/page-tools.js
@@ -171,7 +171,7 @@
   var PLATFORMS = [
     {
       id: "eccom",
-      name: "华讯",
+      name: "eccom",
       match: /internal\.eccom\.com\.cn/,
       questionItem: null,
       question: "#ecmc_body_content div > b",

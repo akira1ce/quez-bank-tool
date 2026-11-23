@@ -9,7 +9,7 @@
 export const PLATFORMS = [
   {
     id: "eccom",
-    name: "华讯",
+    name: "eccom",
     match: /internal\.eccom\.com\.cn/,
     questionItem: null,
     question: "#ecmc_body_content div > b",

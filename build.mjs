@@ -2,10 +2,10 @@ import path from "node:path";
 import { build } from "esbuild";
 
 const header = `// ==UserScript==
-// @name         华讯助手
+// @name         eccom-tools
 // @namespace    http://tampermonkey.net/
 // @version      8.1
-// @description  支持华讯/云学堂；题库匹配答题，可问 DeepSeek 兜底；导出答对题 JSON
+// @description  支持 eccom/云学堂；题库匹配答题，可问 DeepSeek 兜底；导出答对题 JSON
 // @match        *://internal.eccom.com.cn/*
 // @match        *://eccom.yunxuetang.cn/*
 // @noframes

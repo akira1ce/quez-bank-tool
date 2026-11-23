@@ -1,6 +1,6 @@
 # 题库工具集 (Question Bank Tool)
 
-主力是「华讯助手」Tampermonkey 脚本：在考试页面按答案 JSON 匹配题干和选项，自动勾选答案，并支持从考试结果页导出答对题的 JSON。仓库里另有聚合答案库、Excel/TXT 题库处理的辅助脚本。
+主力是「eccom-tools」Tampermonkey 脚本：在考试页面按答案 JSON 匹配题干和选项，自动勾选答案，并支持从考试结果页导出答对题的 JSON。仓库里另有聚合答案库、Excel/TXT 题库处理的辅助脚本。
 
 ## 目录结构
 
@@ -28,7 +28,7 @@ quez-bank-tool/
 └── README.md
 ```
 
-## 华讯助手
+## eccom-tools
 
 ### 支持平台
 
@@ -37,7 +37,7 @@ quez-bank-tool/
 
 两个平台共用一套匹配和答题逻辑，差异只在 `src/platforms.js` 的选择器配置：
 
-- 华讯：题干 `#ecmc_body_content div > b`，选项行 `#frmAnswer table tr`
+- eccom：题干 `#ecmc_body_content div > b`，选项行 `#frmAnswer table tr`
 - 云学堂：题目 `li[name="li_Question"]`，题干 `.col-18 > div[style*="overflow"]`，选项 `label` + radio/checkbox
 
 云学堂的选项选择器是占位默认值，拿到真实 DOM 后只需改 `platforms.js` 里 `options.item / input / text`。
@@ -58,7 +58,7 @@ npm run build
 **答题**：
 
 - 「获取题目」扫描当前页面并追加到内部列表，按题干去重；页面换题后再点一次
-- 「上一题 / 下一题」只切换内部列表并滚动到对应题目，不点击页面按钮；华讯只有一题，这两个按钮保持禁用
+- 「上一题 / 下一题」只切换内部列表并滚动到对应题目，不点击页面按钮；eccom 只有一题，这两个按钮保持禁用
 - 「答题」按当前内部题目匹配答案并勾选；多选会先清掉不在答案里的已选项
 - 「问 AI」把当前题干和页面选项发给 DeepSeek，只显示答案原文，不自动勾选；AI 不确定时显示「不会」
 - 卡片显示当前题目的匹配结果；未匹配时显示原因和页面题干
@@ -130,7 +130,7 @@ npm run merge:answers
 
 ## 本地测试
 
-- `test/mock-exam.html`：华讯结构，一页一题
+- `test/mock-exam.html`：eccom 结构，一页一题
 - `test/mock-yunxuetang.html`：云学堂结构，整页 20 题
 - `test/mock-answers.json`：两个页面共用的答案库
 - `test/mock-similarity.html`：相似度匹配专项，7 个用例，题库 JSON 内嵌在页面里
@@ -140,7 +140,7 @@ npm run merge:answers
 1. 给脚本临时加一行 `// @match file:///*`，并开启 Tampermonkey 的「允许访问文件网址」
 2. 打开模拟页，按反引号展开面板，把 `test/mock-answers.json` 粘贴到「答案 JSON」并保存
 3. 点「获取题目」再点「答题」，检查选项是否被选中
-4. 云学堂用面板的上一题/下一题切题；华讯用页面自身的下一题后重新点「获取题目」
+4. 云学堂用面板的上一题/下一题切题；eccom 用页面自身的下一题后重新点「获取题目」
 
 测完删掉临时的 `@match file:///*`。
 
