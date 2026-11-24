@@ -6,6 +6,8 @@
 //     item：单个选项容器（在当前题目容器内）
 //     input：选项 input（在 item 内）
 //     text：选项文本（在 item 内）；null 时取 item 的 innerText
+//     texts：选项文本列表（在当前题目容器内，与 item 按顺序一一对应）；
+//            配置后优先于 text，用于文本与输入框不在同一元素的平台
 export const PLATFORMS = [
   {
     id: "eccom",
@@ -27,11 +29,10 @@ export const PLATFORMS = [
     questionItem: 'li[name="li_Question"]',
     question: '.col-18 > div[style*="overflow"]',
     qno: null,
-    // 占位选择器：拿到真实 DOM 后替换 item / input / text
     options: {
-      item: "label",
+      item: "label.btn-check",
       input: 'input[type="radio"], input[type="checkbox"]',
-      text: null,
+      texts: ".upper-latin-list > li",
     },
   },
 ];
@@ -41,20 +42,18 @@ export function getPlatform() {
 }
 
 function readOptions(config, scope) {
-  return [...scope.querySelectorAll(config.item)].flatMap((item) => {
+  const texts = config.texts
+    ? [...scope.querySelectorAll(config.texts)].map((el) => el.innerText.trim())
+    : null;
+
+  return [...scope.querySelectorAll(config.item)].flatMap((item, index) => {
     const input = item.querySelector(config.input);
     if (!input) return [];
 
     const textEl = config.text ? item.querySelector(config.text) : item;
-    const text = (textEl?.innerText ?? "").trim();
+    const text = texts ? (texts[index] ?? "") : (textEl?.innerText ?? "").trim();
 
-    return [
-      {
-        input,
-        text,
-        disabled: input.disabled,
-      },
-    ];
+    return [{ input, text }];
   });
 }
 

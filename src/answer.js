@@ -1,4 +1,4 @@
-import { getCurrentItem, findDomQuestion } from "./questions.js";
+import { getCurrentItem } from "./questions.js";
 
 const KEY_ANSWERS = "auto_solver_answers_v6";
 
@@ -76,29 +76,6 @@ function findQuestion(db, title) {
   return pickByText(target, entries)?.question ?? null;
 }
 
-function matchOptions(answerTexts, pageOptions) {
-  if (!Array.isArray(answerTexts) || !answerTexts.length) return null;
-
-  const used = new Set();
-  const options = [];
-
-  for (const answerText of answerTexts) {
-    const target = String(answerText ?? "").trim();
-    if (!target) return null;
-
-    const pool = pageOptions.filter(
-      (option) => !used.has(option) && !option.disabled && option.text,
-    );
-    const option = pickByText(target, pool);
-    if (!option) return null;
-
-    used.add(option);
-    options.push(option);
-  }
-
-  return options;
-}
-
 export function getCurrentBankEntry() {
   const item = getCurrentItem();
   if (!item) return { ok: false, reason: "请先点击「获取题目」" };
@@ -137,36 +114,6 @@ export function searchBank(keyword) {
   );
 
   return { ok: true, total: hits.length, items: hits.slice(0, 20) };
-}
-
-export function solveCurrent() {
-  const item = getCurrentItem();
-  if (!item) return { ok: false, reason: "请先点击「获取题目」" };
-
-  const db = getAnswerDB();
-  if (!db) return { ok: false, reason: "未配置有效答案 JSON" };
-
-  const dom = findDomQuestion(item.key);
-  if (!dom) return { ok: false, reason: "页面已刷新，请重新获取题目" };
-  if (!dom.options.length) return { ok: false, reason: "页面没有可匹配的选项" };
-
-  const question = findQuestion(db, item.title);
-  if (!question) return { ok: false, reason: "答案库中找不到该题干" };
-
-  const options = matchOptions(question.answer, dom.options);
-  if (!options) return { ok: false, reason: "页面找不到匹配的答案" };
-
-  const matched = new Set(options.map(({ input }) => input));
-  for (const option of dom.options) {
-    if (!option.disabled && option.input.checked && !matched.has(option.input)) {
-      option.input.click();
-    }
-  }
-  for (const { input } of options) {
-    if (!input.checked) input.click();
-  }
-
-  return { ok: true, count: options.length };
 }
 
 export function saveAnswers(raw) {

@@ -4,7 +4,7 @@ import { build } from "esbuild";
 const header = `// ==UserScript==
 // @name         eccom-tools
 // @namespace    http://tampermonkey.net/
-// @version      8.1
+// @version      1.1.1
 // @description  支持 eccom/云学堂；题库匹配答题，可问 DeepSeek 兜底；导出答对题 JSON
 // @license      MIT
 // @match        *://internal.eccom.com.cn/*

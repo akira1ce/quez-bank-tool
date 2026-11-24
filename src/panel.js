@@ -12,7 +12,6 @@ import {
   findDomQuestion,
 } from "./questions.js";
 import {
-  solveCurrent,
   saveAnswers,
   getStoredAnswers,
   clearAnswers,
@@ -231,8 +230,7 @@ export function init() {
     <div id="as-body">
       <div class="as-actions">
         <button id="as-fetch" type="button">获取题目</button>
-        <button id="as-solve" class="as-primary" type="button">答题</button>
-        <button id="as-ask-ai" class="as-ask-ai" type="button">问 AI</button>
+        <button id="as-ask-ai" type="button">问 AI</button>
         <button id="as-prev" type="button">上一题</button>
         <button id="as-next" type="button">下一题</button>
       </div>
@@ -485,12 +483,6 @@ export function init() {
   $("#as-search").oninput = () => refreshSearch();
 
   $("#as-fetch").onclick = () => fetchAndRender(true);
-
-  $("#as-solve").onclick = () => {
-    const result = solveCurrent();
-    setStatus(result.ok ? `已选 ${result.count} 项` : `未作答：${result.reason}`);
-    refreshBankCard();
-  };
 
   $("#as-ask-ai").onclick = () => {
     const item = getCurrentItem();

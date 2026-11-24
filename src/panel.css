@@ -240,9 +240,6 @@
   gap: 6px;
   margin-bottom: 10px;
 }
-#auto-solver-box button.as-ask-ai {
-  grid-column: span 2;
-}
 .as-actions button {
   width: 100%;
 }

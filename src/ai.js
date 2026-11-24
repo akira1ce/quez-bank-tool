@@ -9,13 +9,10 @@ const SYSTEM_PROMPT = `你是一个严格的选择题答题器。用户会给你
 1. 只输出一个 JSON 数组，元素是正确选项的完整原文，逐字复制，不改写、不概括、不加字母前缀。
 2. 单选只放 1 个元素；多选放全部正确选项，按题目中的选项顺序排列。
 3. 不要输出解释、注释或 markdown 代码块，数组外不要有任何字符。
-4. 如果无法确定答案、题目信息不足或选项残缺，只输出：不会
-5. 严禁猜测或编造答案。
 
 输出示例：
 单选 → ["TCP 是面向连接的协议"]
-多选 → ["选项一完整原文", "选项二完整原文"]
-不确定 → 不会`;
+多选 → ["选项一完整原文", "选项二完整原文"]`;
 
 export function getApiKey() {
   return String(GM_getValue(KEY_API, "") ?? "").trim();
@@ -94,7 +91,11 @@ function parseContent(content, options) {
 export function askDeepSeek({ title, options }) {
   const key = getApiKey();
   if (!key) {
-    return Promise.resolve({ ok: false, needKey: true, reason: "未配置 API Key" });
+    return Promise.resolve({
+      ok: false,
+      needKey: true,
+      reason: "未配置 API Key",
+    });
   }
 
   const usable = options.filter((option) => option.text);
@@ -131,7 +132,10 @@ export function askDeepSeek({ title, options }) {
         try {
           data = JSON.parse(response.responseText);
         } catch {
-          resolve({ ok: false, reason: `响应解析失败（HTTP ${response.status}）` });
+          resolve({
+            ok: false,
+            reason: `响应解析失败（HTTP ${response.status}）`,
+          });
           return;
         }
 
